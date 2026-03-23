@@ -1,25 +1,41 @@
 <?php
 require_once __DIR__ . '/../config/env.php';
 
-// Load the .env file
-$env = loadEnv(__DIR__ . '/../.env');
-
-
-$dbname = 'Your_DB_Name';
-$hostname = 'localhost';
-
-$DB_USER = $env['DB_USER'] ?? 'root';
-$DB_PASSWORD = $env['DB_PASS']?? 'root';
-
-try {
-    $dbconn = new PDO(
-        "mysql:host=$hostname;dbname=$dbname;charset=utf8mb4",
-        $DB_USER,
-        $DB_PASSWORD
-    );
-    echo 'Connected to database'; // Remove after it works
-    $dbconn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+function getDBConnection(): PDO {
+    static $dbconn = null;
+    
+    if ($dbconn === null) {
+        $env = loadEnv(__DIR__ . '/../.env');
+        
+        $hostname = $env['DB_HOST'] ?? 'localhost';
+        $dbname = $env['DB_NAME'] ?? 'quacko';
+        $DB_USER = $env['DB_USER'] ?? 'root';
+        $DB_PASSWORD = $env['DB_PASS'] ?? '';
+        
+        try {
+            $dbconn = new PDO(
+                "mysql:host={$hostname};dbname={$dbname};charset=utf8mb4",
+                $DB_USER,
+                $DB_PASSWORD,
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false
+                ]
+            );
+        } catch (PDOException $e) {
+            error_log('Database connection failed: ' . $e->getMessage());
+            throw new Exception('Database connection failed');
+        }
+    }
+    
+    return $dbconn;
 }
-catch(PDOException $e){
-    echo 'Connection failed: ' . $e->getMessage();
+
+function getDb(): ?PDO {
+    try {
+        return getDBConnection();
+    } catch (Exception $e) {
+        return null;
+    }
 }
