@@ -55,9 +55,6 @@ require_once __DIR__ . '/../includes/header.php';
         <?php foreach ($popularRooms as $room): ?>
             <div class="room-card" data-room-id="<?= $room['id'] ?>">
                 <div class="room-header">
-                    <div class="room-icon">
-                        <i class="bi bi-chat-dots"></i>
-                    </div>
                     <div class="room-info">
                         <h4><?= htmlspecialchars($room['name']) ?></h4>
                         <span class="room-tag"><?= htmlspecialchars($room['tag']) ?></span>

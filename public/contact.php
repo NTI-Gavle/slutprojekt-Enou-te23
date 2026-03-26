@@ -24,10 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors[] = "Message cannot be empty.";
     }
 
-    // If no errors, you can send email or save to DB
+    
     if (!$errors) {
-        // Example: send email (requires proper mail setup)
-        // mail("you@example.com", "Contact Form Message from $name", $message, "From:$email");
+        //ENNO PUT SEND MAIL HERE! (LATER)
 
         $success = true;
         $name = $email = $message = ''; // clear form

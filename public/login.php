@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body style="background: var(--auth-background);">
     <div class="auth-container">
         <div class="auth-card">
             <div class="d-flex align-items-center justify-content-center mb-4">
