@@ -7,24 +7,24 @@ $userProfileImage = $_SESSION['profile_image'] ?? 'img/default-avatar.png';
 
 $popularRooms = [
     ['id' => 1, 'name' => 'General Chat', 'description' => 'A place for everyone to chat.', 'tag' => 'General', 'members' => 156, 'is_private' => false],
-    ['id' => 2, 'name' => 'Tech Talk', 'description' => 'Discuss the latest in technology.', 'tag' => 'Technology', 'members' => 89, 'is_private' => false],
-    ['id' => 3, 'name' => 'Gaming Lounge', 'description' => 'Connect with fellow gamers.', 'tag' => 'Gaming', 'members' => 234, 'is_private' => false],
-    ['id' => 4, 'name' => 'Music Lovers', 'description' => 'Share and discover new music.', 'tag' => 'Music', 'members' => 67, 'is_private' => false],
-    ['id' => 5, 'name' => 'Book Club', 'description' => 'Discuss books and recommendations.', 'tag' => 'Literature', 'members' => 45, 'is_private' => false],
-    ['id' => 6, 'name' => 'Movie Night', 'description' => 'Talk about movies and reviews.', 'tag' => 'Entertainment', 'members' => 112, 'is_private' => false],
+    ['id' => 2, 'name' => 'General Chat', 'description' => 'A place for everyone to chat.', 'tag' => 'General', 'members' => 156, 'is_private' => false],
+    ['id' => 3, 'name' => 'General Chat', 'description' => 'A place for everyone to chat.', 'tag' => 'General', 'members' => 156, 'is_private' => false],
+    ['id' => 4, 'name' => 'General Chat', 'description' => 'A place for everyone to chat.', 'tag' => 'General', 'members' => 156, 'is_private' => false],
+    ['id' => 5, 'name' => 'General Chat', 'description' => 'A place for everyone to chat.', 'tag' => 'General', 'members' => 156, 'is_private' => false],
+    ['id' => 6, 'name' => 'General Chat', 'description' => 'A place for everyone to chat.', 'tag' => 'General', 'members' => 156, 'is_private' => false],
 ];
 
 if (isLoggedIn()) {
     $friends = [
-        ['id' => 2, 'display_name' => 'Alice Smith', 'profile_image' => 'img/default-avatar.png', 'is_online' => true],
+        ['id' => 2, 'display_name' => 'Bob Johnson', 'profile_image' => 'img/default-avatar.png', 'is_online' => true],
         ['id' => 3, 'display_name' => 'Bob Johnson', 'profile_image' => 'img/default-avatar.png', 'is_online' => false],
-        ['id' => 4, 'display_name' => 'Carol Williams', 'profile_image' => 'img/default-avatar.png', 'is_online' => true],
+        ['id' => 4, 'display_name' => 'Bob Johnson', 'profile_image' => 'img/default-avatar.png', 'is_online' => true], 
     ];
 } else {
     $friends = [];
 }
 
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../includes/header.php';   
 ?>
 
 <section>
@@ -35,8 +35,8 @@ require_once __DIR__ . '/../includes/header.php';
         <p>Hello, <?= htmlspecialchars($_SESSION['display_name'] ?? 'User') ?>!</p>
     <?php else: ?>
         <div class="d-flex gap-2 justify-content-center">
-            <a href="register.php" class="btn btn-primary btn-lg">Get Started</a>
-            <a href="login.php" class="btn btn-outline btn-lg">Login</a>
+            <a href="/auth/register.php" class="btn btn-primary btn-lg">Get Started</a>
+            <a href="/auth/login.php" class="btn btn-outline btn-lg">Login</a>
         </div>
     <?php endif; ?>
 </section>
@@ -108,7 +108,7 @@ document.querySelectorAll('.room-card').forEach(card => {
         <?php if (isLoggedIn()): ?>
             window.location.href = 'chatroom.php?id=' + card.dataset.roomId;
         <?php else: ?>
-            window.location.href = 'login.php';
+            window.location.href = '/auth/login.php';
         <?php endif; ?>
     });
 });

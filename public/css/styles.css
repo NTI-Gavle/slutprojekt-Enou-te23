@@ -197,6 +197,8 @@ body {
 
 .mobile-nav {
     max-width: 280px;
+    left: auto !important;
+    right: 0 !important;
 }
 
 .mobile-user {
