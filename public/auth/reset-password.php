@@ -1,16 +1,20 @@
 <?php
 require_once __DIR__ . '/../../includes/session.php';
+require_once __DIR__ . '/../../database/db.php';
 
 if (isLoggedIn()) {
     header('Location: ../index.php');
     exit();
 }
 
-$pageTitle = "Login";
-$error = $_SESSION['login_error'] ?? null;
-unset($_SESSION['login_error']);
-$success = $_SESSION['login_success'] ?? null;
-unset($_SESSION['login_success']);
+$pageTitle = "Reset Password";
+$error = $_SESSION['reset_error'] ?? null;
+unset($_SESSION['reset_error']);
+
+if (!isset($_SESSION['reset_token'])) {
+    header('Location: forgot-password.php');
+    exit();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -32,42 +36,39 @@ unset($_SESSION['login_success']);
                 <span class="brand">Quacko</span>
             </div>
             
-            <h2 class="text-center mb-4">Login</h2>
+            <h2 class="text-center mb-4">Enter Reset Code</h2>
             
             <?php if ($error): ?>
                 <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
             
-            <?php if ($success): ?>
-                <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
-            <?php endif; ?>
-            
-            <form action="process-login.php" method="POST">
+            <form action="process-reset.php" method="POST">
                 <div class="mb-3">
-                    <label for="username" class="form-label">Username or Email</label>
-                    <input type="text" class="form-control" id="username" name="username" required autofocus>
+                    <label for="reset_code" class="form-label">Reset Code</label>
+                    <input type="text" class="form-control" id="reset_code" name="reset_code" required autofocus>
                 </div>
                 
                 <div class="mb-3">
-                    <label for="password" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="password" name="password" required>
+                    <label for="new_password" class="form-label">New Password</label>
+                    <input type="password" class="form-control" id="new_password" name="new_password" required>
                 </div>
                 
-                <div class="mb-3 text-end">
-                    <a href="forgot-password.php">Forgot password?</a>
+                <div class="mb-4">
+                    <label for="confirm_password" class="form-label">Confirm New Password</label>
+                    <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
                 </div>
                 
                 <div class="d-grid mb-3">
-                    <button type="submit" class="btn btn-primary btn-lg">Login</button>
+                    <button type="submit" class="btn btn-primary btn-lg">Reset Password</button>
                 </div>
             </form>
             
-            <p class="text-center">
-                Don't have an account? <a href="register.php">Register here</a>
+            <p class="text-center mt-3">
+                <a href="forgot-password.php">Request new code</a>
             </p>
             
             <p class="text-center mt-3">
-                <a href="../index.php">Back to Home</a>
+                <a href="login.php">Login</a>
             </p>
         </div>
     </div>

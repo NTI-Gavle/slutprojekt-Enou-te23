@@ -1,63 +1,16 @@
 <?php
 require_once __DIR__ . '/../../includes/session.php';
 
-$pageTitle = "Register";
-
 if (isLoggedIn()) {
     header('Location: ../index.php');
     exit();
 }
 
-$errors = [];
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    require_once __DIR__ . '/../../database/db.php';
-    
-    $username = trim($_POST['username'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
-    $confirmPassword = $_POST['confirm_password'] ?? '';
-    
-    if (empty($username) || strlen($username) < 3) {
-        $errors['username'] = 'Username must be at least 3 characters.';
-    }
-    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $errors['email'] = 'Valid email required.';
-    }
-    if (empty($password) || strlen($password) < 8) {
-        $errors['password'] = 'Password must be at least 8 characters.';
-    }
-    if ($password !== $confirmPassword) {
-        $errors['confirm_password'] = 'Passwords do not match.';
-    }
-    
-    if (empty($errors)) {
-        try {
-            $dbconn = getDBConnection();
-            
-            if ($dbconn) {
-                $stmt = $dbconn->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
-                $stmt->execute([$username, $email]);
-                
-                if (!$stmt->fetch()) {
-                    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                    $stmt = $dbconn->prepare("INSERT INTO users (username, email, password, display_name, created_at) VALUES (?, ?, ?, ?, NOW())");
-                    $stmt->execute([$username, $email, $hashedPassword, $username]);
-                    loginUser($dbconn->lastInsertId(), $username, $email, $username);
-                    header('Location: ../index.php');
-                    exit();
-                }
-                $errors['general'] = 'Username or email already exists.';
-            } else {
-                loginUser(2, $username, $email, $username);
-                header('Location: ../index.php');
-                exit();
-            }
-        } catch (Exception $e) {
-            $errors['general'] = 'Unable to create account.';
-        }
-    }
-}
+$pageTitle = "Register";
+$errors = $_SESSION['register_errors'] ?? [];
+unset($_SESSION['register_errors']);
+$old = $_SESSION['old_register'] ?? [];
+unset($_SESSION['old_register']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -85,11 +38,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="alert alert-danger"><?= htmlspecialchars($errors['general']) ?></div>
             <?php endif; ?>
             
-            <form method="POST" action="">
+            <form action="process-register.php" method="POST">
                 <div class="mb-3">
                     <label for="username" class="form-label">Username</label>
                     <input type="text" class="form-control <?= isset($errors['username']) ? 'is-invalid' : '' ?>" 
-                           id="username" name="username" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>" required>
+                           id="username" name="username" value="<?= htmlspecialchars($old['username'] ?? '') ?>" required>
                     <?php if (isset($errors['username'])): ?>
                         <div class="invalid-feedback"><?= $errors['username'] ?></div>
                     <?php endif; ?>
@@ -98,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="mb-3">
                     <label for="email" class="form-label">Email</label>
                     <input type="email" class="form-control <?= isset($errors['email']) ? 'is-invalid' : '' ?>" 
-                           id="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
+                           id="email" name="email" value="<?= htmlspecialchars($old['email'] ?? '') ?>" required>
                     <?php if (isset($errors['email'])): ?>
                         <div class="invalid-feedback"><?= $errors['email'] ?></div>
                     <?php endif; ?>

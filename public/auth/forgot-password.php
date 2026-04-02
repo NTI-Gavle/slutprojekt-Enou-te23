@@ -1,33 +1,16 @@
 <?php
 require_once __DIR__ . '/../../includes/session.php';
 
-$pageTitle = "Forgot Password";
-
 if (isLoggedIn()) {
     header('Location: ../index.php');
     exit();
 }
 
-$error = '';
-$success = '';
-$step = 1;
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['request_reset'])) {
-        $email = trim($_POST['email'] ?? '');
-        
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $error = 'Please enter a valid email address.';
-        } else {
-            $success = 'If an account exists, a reset link was sent.';
-            $step = 2;
-        }
-    }
-    
-    if (isset($_POST['reset_password'])) {
-        $step = 3;
-    }
-}
+$pageTitle = "Forgot Password";
+$error = $_SESSION['reset_error'] ?? null;
+unset($_SESSION['reset_error']);
+$success = $_SESSION['reset_success'] ?? null;
+unset($_SESSION['reset_success']);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -59,25 +42,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
             <?php endif; ?>
             
-            <?php if ($step === 1): ?>
-                <p class="text-center mb-4">Enter your email to reset your password.</p>
+            <?php if (!isset($_SESSION['reset_token'])): ?>
+                <p class="text-center mb-4">Enter your email to receive a reset code.</p>
                 
-                <form method="POST" action="">
+                <form action="process-reset-request.php" method="POST">
                     <div class="mb-4">
                         <label for="email" class="form-label">Email Address</label>
                         <input type="email" class="form-control" id="email" name="email" required autofocus>
                     </div>
                     
                     <div class="d-grid mb-3">
-                        <button type="submit" name="request_reset" class="btn btn-primary btn-lg">Send Reset Link</button>
+                        <button type="submit" class="btn btn-primary btn-lg">Send Reset Code</button>
                     </div>
                 </form>
-            <?php elseif ($step === 2): ?>
-                <div class="text-center">
-                    <i class="bi bi-envelope-check" style="font-size: 4rem;"></i>
-                    <p class="mt-3">Check your email for a reset link.</p>
-                    <a href="forgot-password.php">Try again</a>
-                </div>
+            <?php else: ?>
+                <p class="text-center mb-4">Enter the reset code from your email.</p>
+                
+                <form action="process-reset.php" method="POST">
+                    <div class="mb-3">
+                        <label for="reset_code" class="form-label">Reset Code</label>
+                        <input type="text" class="form-control" id="reset_code" name="reset_code" required autofocus>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" required>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="confirm_password" class="form-label">Confirm Password</label>
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                    </div>
+                    
+                    <div class="d-grid mb-3">
+                        <button type="submit" class="btn btn-primary btn-lg">Reset Password</button>
+                    </div>
+                </form>
             <?php endif; ?>
             
             <p class="text-center mt-3">

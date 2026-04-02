@@ -32,7 +32,7 @@
                     <?php if (isset($_SESSION['user_id'])): ?>
                         <img src="<?= $userProfileImage ?? 'img/default-avatar.png' ?>" alt="Profile" class="avatar">
                         <a href="profile.php" class="btn btn-outline btn-sm">Profile</a>
-                        <a href="auth/logout.php" class="btn btn-outline btn-sm">Logout</a>
+                        <a href="auth/process-logout.php" class="btn btn-outline btn-sm">Logout</a>
                     <?php else: ?>
                         <a href="auth/login.php" class="btn btn-outline">Login</a>
                         <a href="auth/register.php" class="btn btn-primary">Register</a>
@@ -67,7 +67,7 @@
                     <span><?= htmlspecialchars($_SESSION['display_name'] ?? 'User') ?></span>
                 </div>
                 <a href="profile.php" class="btn btn-outline w-100 mb-2">Profile</a>
-                <a href="auth/logout.php" class="btn btn-outline w-100">Logout</a>
+                <a href="auth/process-logout.php" class="btn btn-outline w-100">Logout</a>
             <?php else: ?>
                 <a href="auth/login.php" class="btn btn-outline w-100 mb-2">Login</a>
                 <a href="auth/register.php" class="btn btn-primary w-100">Register</a>
