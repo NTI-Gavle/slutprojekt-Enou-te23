@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../includes/session.php';
 $pageTitle = "Login";
 
 if (isLoggedIn()) {
-    header('Location: /../index.php');
+    header('Location: ../index.php');
     exit();
 }
 
@@ -30,13 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($user && password_verify($password, $user['password'])) {
                     loginUser($user['id'], $user['username'], $user['email'], $user['display_name'], $user['profile_image']);
                     regenerateSession();
-                    header('Location: /../index.php');
+                    header('Location: ../index.php');
                     exit();
                 }
             } else {
                 if ($username === 'demo' && $password === 'demo123') {
                     loginUser(1, 'demo', 'demo@example.com', 'Demo User');
-                    header('Location: /../index.php');
+                    header('Location: ../index.php');
                     exit();
                 }
             }
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Exception $e) {
             if ($username === 'demo' && $password === 'demo123') {
                 loginUser(1, 'demo', 'demo@example.com', 'Demo User');
-                header('Location: /../index.php');
+                header('Location: ../index.php');
                 exit();
             }
             $error = 'Invalid username or password.';
@@ -60,9 +60,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title><?= $pageTitle ?> | Quacko</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="/../css/styles.css">
+    <link rel="stylesheet" href="../css/styles.css">
 </head>
-<body style="background: var(--auth-background);">
+<body>
     <div class="auth-container">
         <div class="auth-card">
             <div class="d-flex align-items-center justify-content-center mb-4">
@@ -99,11 +99,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
             
             <p class="text-center">
-                Don't have an account? <a href="/../register.php">Register here</a>
+                Don't have an account? <a href="register.php">Register here</a>
             </p>
             
             <p class="text-center mt-3">
-                <a href="/../index.php">Back to Home</a>
+                <a href="../index.php">Back to Home</a>
             </p>
         </div>
     </div>

@@ -35,8 +35,8 @@ require_once __DIR__ . '/../includes/header.php';
         <p>Hello, <?= htmlspecialchars($_SESSION['display_name'] ?? 'User') ?>!</p>
     <?php else: ?>
         <div class="d-flex gap-2 justify-content-center">
-            <a href="/auth/register.php" class="btn btn-primary btn-lg">Get Started</a>
-            <a href="/auth/login.php" class="btn btn-outline btn-lg">Login</a>
+            <a href="auth/register.php" class="btn btn-primary btn-lg">Get Started</a>
+            <a href="auth/login.php" class="btn btn-outline btn-lg">Login</a>
         </div>
     <?php endif; ?>
 </section>
@@ -108,7 +108,7 @@ document.querySelectorAll('.room-card').forEach(card => {
         <?php if (isLoggedIn()): ?>
             window.location.href = 'chatroom.php?id=' + card.dataset.roomId;
         <?php else: ?>
-            window.location.href = '/auth/login.php';
+            window.location.href = 'auth/login.php';
         <?php endif; ?>
     });
 });

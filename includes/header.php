@@ -1,18 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quacko <?= isset($pageTitle) ? "| " . htmlspecialchars($pageTitle) : "" ?></title>
+    <title><?= isset($pageTitle) ? htmlspecialchars($pageTitle) . ' | Quacko' : 'Quacko' ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="css/styles.css">
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="js/app.js" defer></script>
 </head>
-
 <body>
     <header class="site-header">
         <div class="container-fluid">
@@ -21,10 +18,7 @@
                     <div class="logo">
                         <span>Q</span>
                     </div>
-                    <a href="index.php" class="brand ms-2">Quacko <span class="text-body-secondary fst-italic fs-6">
-                            ● <?= htmlspecialchars($pageTitle) ?>
-                        </span>
-                    </a>
+                    <a href="index.php" class="brand">Quacko</a>
                 </div>
 
                 <div class="d-none d-md-flex align-items-center gap-3">
@@ -38,10 +32,10 @@
                     <?php if (isset($_SESSION['user_id'])): ?>
                         <img src="<?= $userProfileImage ?? 'img/default-avatar.png' ?>" alt="Profile" class="avatar">
                         <a href="profile.php" class="btn btn-outline btn-sm">Profile</a>
-                        <a href="logout.php" class="btn btn-outline btn-sm">Logout</a>
+                        <a href="auth/logout.php" class="btn btn-outline btn-sm">Logout</a>
                     <?php else: ?>
-                        <a href="login.php" class="btn btn-outline">Login</a>
-                        <a href="register.php" class="btn btn-primary">Register</a>
+                        <a href="auth/login.php" class="btn btn-outline">Login</a>
+                        <a href="auth/register.php" class="btn btn-primary">Register</a>
                     <?php endif; ?>
                 </div>
 
@@ -73,10 +67,10 @@
                     <span><?= htmlspecialchars($_SESSION['display_name'] ?? 'User') ?></span>
                 </div>
                 <a href="profile.php" class="btn btn-outline w-100 mb-2">Profile</a>
-                <a href="logout.php" class="btn btn-outline w-100">Logout</a>
+                <a href="auth/logout.php" class="btn btn-outline w-100">Logout</a>
             <?php else: ?>
-                <a href="login.php" class="btn btn-outline w-100 mb-2">Login</a>
-                <a href="register.php" class="btn btn-primary w-100">Register</a>
+                <a href="auth/login.php" class="btn btn-outline w-100 mb-2">Login</a>
+                <a href="auth/register.php" class="btn btn-primary w-100">Register</a>
             <?php endif; ?>
         </div>
     </div>
