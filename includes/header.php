@@ -46,7 +46,7 @@
         </div>
     </header>
 
-    <div class="offcanvas offcanvas-start mobile-nav" tabindex="-1" id="mobileMenu">
+    <div class="offcanvas offcanvas-end mobile-nav" tabindex="-1" id="mobileMenu">
         <div class="offcanvas-header">
             <div class="d-flex align-items-center">
                 <div class="logo">
@@ -76,8 +76,9 @@
     </div>
 
     <div class="app-container">
-        <aside class="sidebar">
-            <?php include __DIR__ . '/sidebar.php'; ?>
-        </aside>
+        <div class="content-wrapper">
+            <aside class="sidebar">
+                <?php include __DIR__ . '/sidebar.php'; ?>
+            </aside>
 
-        <main class="main-content">
+            <main class="main-content">

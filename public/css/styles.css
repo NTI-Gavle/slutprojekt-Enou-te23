@@ -19,6 +19,40 @@ body {
 
 .app-container {
     display: flex;
+    width: 100%;
+}
+
+.content-wrapper {
+    display: flex;
+    flex: 1;
+    width: 100%;
+}
+
+.sidebar {
+    width: 250px;
+    min-width: 250px;
+    background: white;
+    border-right: 1px solid #ddd;
+    padding: 15px;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+    position: sticky;
+    top: 60px;
+}
+
+.sidebar-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.main-content {
+    flex: 1;
+    padding: 20px;
+    min-width: 0;
 }
 
 .site-header {
@@ -35,8 +69,10 @@ body {
     background: white;
     border-right: 1px solid #ddd;
     padding: 15px;
-    height: calc(100vh - 60px);
+    height: calc(100vh - 60px - 180px);
     overflow-y: auto;
+    position: sticky;
+    top: 60px;
 }
 
 .sidebar-title {
@@ -44,6 +80,8 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
 }
 
 .main-content {
@@ -112,9 +150,24 @@ body {
 }
 
 .site-footer {
-    padding: 30px 20px 15px;
     background: white;
     border-top: 1px solid #ddd;
+    padding: 30px 0 15px;
+    width: 100%;
+    clear: both;
+}
+
+.site-footer hr {
+    margin: 20px auto;
+    width: 80%;
+    border: none;
+    border-top: 1px solid;
+    color: inherit;
+}
+
+.site-footer .row {
+    margin: 0;
+    width: 100%;
 }
 
 .site-footer .footer-brand {
@@ -197,8 +250,6 @@ body {
 
 .mobile-nav {
     max-width: 280px;
-    left: auto !important;
-    right: 0 !important;
 }
 
 .mobile-user {
@@ -256,6 +307,11 @@ body {
     align-items: center;
     gap: 10px;
     padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.friend:last-child {
+    border-bottom: none;
 }
 
 .friend-avatar-wrap {

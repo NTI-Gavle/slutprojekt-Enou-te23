@@ -42,34 +42,35 @@ if (!empty($errors)) {
 try {
     $dbconn = getDBConnection();
     
-    if ($dbconn) {
-        $stmt = $dbconn->prepare("SELECT id FROM users WHERE username = ? OR email = ? LIMIT 1");
-        $stmt->execute([$username, $email]);
-        
-        if ($stmt->fetch()) {
-            $errors['general'] = 'Username or email already exists.';
-            $_SESSION['register_errors'] = $errors;
-            $_SESSION['old_register'] = ['username' => $username, 'email' => $email];
-            header('Location: register.php');
-            exit();
-        }
-        
-        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $dbconn->prepare("INSERT INTO users (username, email, password, display_name, created_at) VALUES (?, ?, ?, ?, NOW())");
-        $stmt->execute([$username, $email, $hashedPassword, $username]);
-        
-        loginUser($dbconn->lastInsertId(), $username, $email, $username);
-        header('Location: ../index.php');
+    if (!$dbconn) {
+        $_SESSION['register_errors'] = ['general' => 'Database connection failed. Please try again later.'];
+        $_SESSION['old_register'] = ['username' => $username, 'email' => $email];
+        header('Location: register.php');
         exit();
     }
     
-    loginUser(2, $username, $email, $username);
+    $stmt = $dbconn->prepare("SELECT id FROM users WHERE username = ? OR email = ? LIMIT 1");
+    $stmt->execute([$username, $email]);
+    
+    if ($stmt->fetch()) {
+        $errors['general'] = 'Username or email already exists.';
+        $_SESSION['register_errors'] = $errors;
+        $_SESSION['old_register'] = ['username' => $username, 'email' => $email];
+        header('Location: register.php');
+        exit();
+    }
+    
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+    $stmt = $dbconn->prepare("INSERT INTO users (username, email, password, display_name, created_at) VALUES (?, ?, ?, ?, NOW())");
+    $stmt->execute([$username, $email, $hashedPassword, $username]);
+    
+    loginUser($dbconn->lastInsertId(), $username, $email, $username);
     header('Location: ../index.php');
     exit();
     
 } catch (Exception $e) {
-    $errors['general'] = 'Unable to create account. Please try again.';
-    $_SESSION['register_errors'] = $errors;
+    error_log('Registration error: ' . $e->getMessage());
+    $_SESSION['register_errors'] = ['general' => 'Error: ' . $e->getMessage()];
     $_SESSION['old_register'] = ['username' => $username, 'email' => $email];
     header('Location: register.php');
     exit();
