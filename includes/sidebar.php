@@ -6,6 +6,10 @@ if (!isset($friends)) {
 
 <div class="sidebar-title">
     <h5 class="mb-0">My Friends</h5>
+    <div class="friend-chat-icon" title="Chats">
+        <i class="bi bi-chat-left-text"></i>
+        <span class="chat-badge" id="chatBadge" style="display: none;">1</span>
+    </div>
 </div>
 
 <?php if (isset($_SESSION['user_id'])): ?>
@@ -40,7 +44,10 @@ if (!isset($friends)) {
                     <span class="friend-status"><?= $friend['is_online'] ? 'Online' : 'Offline' ?></span>
                 </div>
                 <div class="friend-btns">
-                    <button class="btn btn-icon"><i class="bi bi-chat-left-text"></i></button>
+                    <button class="btn btn-icon" onclick="openUserChat(<?= $friend['id'] ?>, '<?= htmlspecialchars($friend['display_name']) ?>', '<?= htmlspecialchars($friend['profile_image'] ?? 'img/default-avatar.svg') ?>')">
+                        <i class="bi bi-chat-left-text"></i>
+                        <span class="friend-badge" id="badge-<?= $friend['id'] ?>" style="display: none;">1</span>
+                    </button>
                     <button class="btn btn-icon"><i class="bi bi-telephone"></i></button>
                 </div>
             </div>

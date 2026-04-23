@@ -39,7 +39,9 @@
             </div>
         </div>
         <hr>
-        <p class="small text-muted text-center">&copy; <?= date('Y') ?> Quacko</p>
+<p class="small text-muted text-center">&copy; <?= date('Y') ?> Quacko</p>
     </footer>
+    
+<?php include __DIR__ . '/userchat.php'; ?>
 </body>
 </html>
