@@ -30,7 +30,7 @@ function getCurrentUser(): ?array {
         'username' => $_SESSION['username'] ?? null,
         'email' => $_SESSION['email'] ?? null,
         'display_name' => $_SESSION['display_name'] ?? null,
-        'profile_image' => $_SESSION['profile_image'] ?? 'img/default-avatar.png'
+        'profile_image' => $_SESSION['profile_image'] ?? 'img/default-avatar.svg'
     ];
 }
 
@@ -40,7 +40,7 @@ function loginUser(int $userId, string $username, string $email, string $display
     $_SESSION['username'] = $username;
     $_SESSION['email'] = $email;
     $_SESSION['display_name'] = $displayName;
-    $_SESSION['profile_image'] = $profileImage ?? 'img/default-avatar.png';
+    $_SESSION['profile_image'] = $profileImage ?? 'img/default-avatar.svg';
     $_SESSION['login_time'] = time();
 }
 

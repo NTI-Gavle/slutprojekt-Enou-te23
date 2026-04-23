@@ -4,15 +4,15 @@ require_once __DIR__ . '/../database/db.php';
 use PDO;
 
 $pageTitle = "Home";
-$userProfileImage = $_SESSION['profile_image'] ?? 'img/default-avatar.png';
+$userProfileImage = $_SESSION['profile_image'] ?? 'img/default-avatar.svg';
 
 $popularRooms = [];
 
 if (isLoggedIn()) {
     $friendsList = [
-        ['id' => 2, 'display_name' => 'Bob Johnson', 'profile_image' => 'img/default-avatar.png', 'is_online' => true],
-        ['id' => 3, 'display_name' => 'Bob Johnson', 'profile_image' => 'img/default-avatar.png', 'is_online' => false],
-        ['id' => 4, 'display_name' => 'Bob Johnson', 'profile_image' => 'img/default-avatar.png', 'is_online' => true], 
+        ['id' => 2, 'display_name' => 'Bob Johnson', 'profile_image' => 'img/default-avatar.svg', 'is_online' => true],
+        ['id' => 3, 'display_name' => 'Bob Johnson', 'profile_image' => 'img/default-avatar.svg', 'is_online' => false],
+        ['id' => 4, 'display_name' => 'Bob Johnson', 'profile_image' => 'img/default-avatar.svg', 'is_online' => true], 
     ];
     $friends = $friendsList;
 } else {

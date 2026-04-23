@@ -21,16 +21,23 @@
                     <a href="index.php" class="brand">Quacko</a>
                 </div>
 
-                <div class="d-none d-md-flex align-items-center gap-3">
-                    <form class="search-bar">
-                        <input type="search" class="form-control" placeholder="Search...">
-                        <button class="btn btn-search" type="submit">
-                            <i class="bi bi-search"></i>
-                        </button>
-                    </form>
+<div class="d-none d-md-flex align-items-center gap-3">
+                    <div class="search-wrapper">
+                        <form class="quacko-search search-bar" id="headerSearchForm" autocomplete="off">
+                            <input type="search" class="form-control" id="headerSearchInput" name="q" placeholder="Search users & rooms..." autocomplete="off">
+                            <button class="btn btn-search" type="submit">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </form>
+                        <div class="search-results" id="searchResults"></div>
+                    </div>
 
                     <?php if (isset($_SESSION['user_id'])): ?>
-                        <img src="<?= $userProfileImage ?? 'img/default-avatar.png' ?>" alt="Profile" class="avatar">
+                        <?php 
+                        $img = $_SESSION['profile_image'] ?? '';
+                        if (empty($img) || $img === 'img/default-avatar.png') { $img = 'img/default-avatar.svg'; }
+                        ?>
+                        <img src="<?= $img ?>" alt="Profile" class="avatar">
                         <a href="profile.php" class="btn btn-outline btn-sm">Profile</a>
                         <a href="auth/process-logout.php" class="btn btn-outline btn-sm">Logout</a>
                     <?php else: ?>
@@ -61,9 +68,13 @@
                 <input type="search" class="form-control" placeholder="Search...">
             </form>
 
-            <?php if (isset($_SESSION['user_id'])): ?>
+<?php if (isset($_SESSION['user_id'])): ?>
+                <?php 
+                $img = $_SESSION['profile_image'] ?? '';
+                if (empty($img) || $img === 'img/default-avatar.png') { $img = 'img/default-avatar.svg'; }
+                ?>
                 <div class="mobile-user mb-3">
-                    <img src="<?= $userProfileImage ?? 'img/default-avatar.png' ?>" alt="Profile" class="avatar">
+                    <img src="<?= $img ?>" alt="Profile" class="avatar">
                     <span><?= htmlspecialchars($_SESSION['display_name'] ?? 'User') ?></span>
                 </div>
                 <a href="profile.php" class="btn btn-outline w-100 mb-2">Profile</a>

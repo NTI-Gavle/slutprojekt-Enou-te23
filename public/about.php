@@ -42,13 +42,13 @@ require_once __DIR__ . '/../includes/header.php';
         
         <div class="profile-section">
             <div class="profile-card-small">
-                <img src="img/default-avatar.png" alt="Creator" class="profile-avatar-small">
+                <img src="img/default-avatar.svg" alt="Creator" class="profile-avatar-small">
                 <h3>Enno Keanu Elbert</h3>
                 <p class="text-muted">Creator & Developer</p>
             </div>
             
             <div class="profile-card-large">
-                <img src="img/default-avatar.png" alt="Creator" class="profile-avatar-large">
+                <img src="img/default-avatar.svg" alt="Creator" class="profile-avatar-large">
                 <h2>Enno Keanu Elbert</h2>
                 <p class="bio">
                     I am a passionate developer with a vision to create a modern, seamless chat platform. 

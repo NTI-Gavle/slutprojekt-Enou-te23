@@ -52,15 +52,65 @@ function initiateCall(userId) {
 }
 
 function initSearchForm() {
-    const searchForms = document.querySelectorAll('.quacko-search');
-    searchForms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const query = this.querySelector('input[type="search"]').value;
-            if (query.trim()) {
-                window.location.href = `search.php?q=${encodeURIComponent(query)}`;
-            }
-        });
+    const searchInput = document.getElementById('headerSearchInput');
+    const resultsDiv = document.getElementById('searchResults');
+    let debounceTimeout;
+
+    if (!searchInput || !resultsDiv) return;
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimeout);
+        const query = this.value.trim();
+        if (query.length < 2) {
+            resultsDiv.innerHTML = '';
+            resultsDiv.style.display = 'none';
+            return;
+        }
+        debounceTimeout = setTimeout(() => {
+            fetch(`api/search.php?q=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    let html = '';
+                    if ((data.users && data.users.length) || (data.rooms && data.rooms.length)) {
+                        if (data.users && data.users.length) {
+                            html += '<div class="search-section"><strong>Users</strong>';
+                            data.users.forEach(user => {
+                                html += `<div class='search-item' onclick="window.location.href='profile.php?user=${user.id}'">`
+                                    + `<img src='${sanitizeHTML(user.profile_image)}' class='avatar me-2' style='width:28px;height:28px;'>`
+                                    + `${sanitizeHTML(user.display_name || user.username)}`
+                                    + '</div>';
+                            });
+                            html += '</div>';
+                        }
+                        if (data.rooms && data.rooms.length) {
+                            html += '<div class="search-section"><strong>Rooms</strong>';
+                            data.rooms.forEach(room => {
+                                html += `<div class='search-item' onclick="window.location.href='chatroom.php?id=${room.id}'">`
+                                    + `<i class='bi bi-chat-dots me-2'></i>`
+                                    + `${sanitizeHTML(room.name)}`
+                                    + (room.tag ? ` <span class='room-tag ms-2'>${sanitizeHTML(room.tag)}</span>` : '')
+                                    + '</div>';
+                            });
+                            html += '</div>';
+                        }
+                    } else {
+                        html = '<div class="search-item text-muted">No results found</div>';
+                    }
+                    resultsDiv.innerHTML = html;
+                    resultsDiv.style.display = 'block';
+                })
+                .catch(() => {
+                    resultsDiv.innerHTML = '<div class="search-item text-danger">Error loading results</div>';
+                    resultsDiv.style.display = 'block';
+                });
+        }, 200);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!resultsDiv.contains(e.target) && e.target !== searchInput) {
+            resultsDiv.innerHTML = '';
+            resultsDiv.style.display = 'none';
+        }
     });
 }
 
