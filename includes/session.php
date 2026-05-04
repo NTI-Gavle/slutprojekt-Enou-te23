@@ -30,7 +30,7 @@ function getCurrentUser(): ?array {
         'username' => $_SESSION['username'] ?? null,
         'email' => $_SESSION['email'] ?? null,
         'display_name' => $_SESSION['display_name'] ?? null,
-        'profile_image' => $_SESSION['profile_image'] ?? 'img/default-avatar.svg'
+        'profile_image' => getValidProfileImage($_SESSION['profile_image'] ?? null)
     ];
 }
 
@@ -40,7 +40,7 @@ function loginUser(int $userId, string $username, string $email, string $display
     $_SESSION['username'] = $username;
     $_SESSION['email'] = $email;
     $_SESSION['display_name'] = $displayName;
-    $_SESSION['profile_image'] = $profileImage ?? 'img/default-avatar.svg';
+    $_SESSION['profile_image'] = getValidProfileImage($profileImage);
     $_SESSION['login_time'] = time();
 }
 
@@ -81,6 +81,23 @@ function getFlashMessage(): ?array {
         return $flash;
     }
     return null;
+}
+
+function getValidProfileImage(?string $imagePath): string {
+    // Handle empty or any default-avatar reference
+    if (empty($imagePath) || strpos($imagePath, 'default-avatar') !== false) {
+        return 'img/default-avatar.svg';
+    }
+    
+    // Calculate correct path relative to project root
+    $projectRoot = dirname(__DIR__);
+    $fullPath = $projectRoot . '/public/' . $imagePath;
+    
+    if (file_exists($fullPath)) {
+        return $imagePath;
+    }
+    
+    return 'img/default-avatar.svg';
 }
 
 function displayFlashMessages(): string {

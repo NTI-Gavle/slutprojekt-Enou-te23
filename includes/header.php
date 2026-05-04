@@ -34,8 +34,7 @@
 
                     <?php if (isset($_SESSION['user_id'])): ?>
                         <?php 
-                        $img = $_SESSION['profile_image'] ?? '';
-                        if (empty($img) || $img === 'img/default-avatar.png') { $img = 'img/default-avatar.svg'; }
+                        $img = getValidProfileImage($_SESSION['profile_image'] ?? null);
                         ?>
                         <img src="<?= $img ?>" alt="Profile" class="avatar">
                         <a href="profile.php" class="btn btn-outline btn-sm">Profile</a>
@@ -70,8 +69,7 @@
 
 <?php if (isset($_SESSION['user_id'])): ?>
                 <?php 
-                $img = $_SESSION['profile_image'] ?? '';
-                if (empty($img) || $img === 'img/default-avatar.png') { $img = 'img/default-avatar.svg'; }
+                $img = getValidProfileImage($_SESSION['profile_image'] ?? null);
                 ?>
                 <div class="mobile-user mb-3">
                     <img src="<?= $img ?>" alt="Profile" class="avatar">

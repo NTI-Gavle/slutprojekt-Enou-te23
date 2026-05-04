@@ -31,3 +31,6 @@ Desktop.ini
 
 # Public uploads (if your project uses uploads folder)
 public/uploads/
+
+# Progress reports (not part of the project)
+PROGRESS_REPORT.md

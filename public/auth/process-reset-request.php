@@ -24,8 +24,8 @@ try {
         $user = $stmt->fetch();
         
         if ($user) {
-            $token = bin2hex(random_bytes(32));
-            $expires = date('Y-m-d H:i:s', time() + 900);
+            $token = random_int(100000, 999999);
+            $expires = date('Y-m-d H:i:s', time() + 7200);
             
             $stmt = $dbconn->prepare("DELETE FROM password_resets WHERE user_id = ?");
             $stmt->execute([$user['id']]);
@@ -33,9 +33,23 @@ try {
             $stmt = $dbconn->prepare("INSERT INTO password_resets (user_id, token, expires_at, created_at) VALUES (?, ?, ?, NOW())");
             $stmt->execute([$user['id'], $token, $expires]);
             
+            // Send email with reset code using PHPMailer
+            require_once __DIR__ . '/../../config/Mailer/sendmail.php';
+            $result = sendMail(
+                $email,
+                'Quacko Password Reset Code',
+                "Your password reset code is: <b>{$token}</b><br><br>This code expires in 2 hours."
+            );
+            
             $_SESSION['reset_token'] = $token;
             $_SESSION['reset_email'] = $email;
-            $_SESSION['reset_success'] = 'A reset code has been sent to your email.';
+            
+            if ($result['success']) {
+                $_SESSION['reset_success'] = 'A reset code has been sent to your email.';
+            } else {
+                $_SESSION['reset_error'] = 'Failed to send email: ' . $result['message'];
+            }
+            
             header('Location: reset-password.php');
             exit();
         }

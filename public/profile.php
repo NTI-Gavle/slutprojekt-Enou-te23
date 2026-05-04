@@ -2,7 +2,6 @@
 // Load session functions and database connection
 require_once __DIR__ . '/../includes/session.php';
 require_once __DIR__ . '/../database/db.php';
-use PDO;
 
 // Set page title for the browser tab
 $pageTitle = "Profile Settings";
@@ -20,6 +19,9 @@ $userId = $_SESSION['user_id'];
 $stmt = getDBConnection()->prepare("SELECT * FROM users WHERE id = ?");
 $stmt->execute([$userId]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Get valid profile image path
+$profileImage = getValidProfileImage($user['profile_image'] ?? $_SESSION['profile_image'] ?? null);
 
 // Handle username update form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_username'])) {
@@ -88,24 +90,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_code'])) {
         $email = $user['email'];
     }
     if ($email === $user['email']) {
-        // Generate secure random token
-        $token = bin2hex(random_bytes(16));
-        $expires = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        // Generate 6-digit numeric code
+        $token = random_int(100000, 999999);
+        $expires = date('Y-m-d H:i:s', strtotime('+2 hours'));
         
         try {
             // Save reset token to database
             $stmt = getDBConnection()->prepare("INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)");
             $stmt->execute([$userId, $token, $expires]);
             
-            // Send email with reset code
-            $subject = 'Quacko Password Reset Code';
-            $message = "Your password reset code is: {$token}\n\nThis code expires in 1 hour.";
-            $headers = 'From: noreply@quacko.com' . "\r\n" .
-                        'Content-Type: text/plain; charset=utf-8';
+            // Send email with reset code using PHPMailer
+            require_once __DIR__ . '/../config/Mailer/sendmail.php';
+            $result = sendMail(
+                $email,
+                'Quacko Password Reset Code',
+                "Your password reset code is: <b>{$token}</b><br><br>This code expires in 2 hours."
+            );
             
-            mail($email, $subject, $message, $headers);
-            
-            setFlashMessage('success', 'Reset code sent to your email! Code: ' . $token);
+            if ($result['success']) {
+                setFlashMessage('success', 'Reset code sent to your email!');
+            } else {
+                setFlashMessage('error', 'Failed to send email: ' . $result['message']);
+            }
         } catch (Exception $e) {
             setFlashMessage('error', 'Failed to generate reset code.');
         }
@@ -130,7 +136,7 @@ require_once __DIR__ . '/../includes/header.php';
     <?php // Left card - Profile picture with upload button ?>
     <div class="profile-card">
         <div class="profile-avatar-large">
-            <img src="<?= htmlspecialchars($profileImage) ?>" alt="Profile" id="profileAvatar">
+            <img src="<?= htmlspecialchars($user['profile_image'] ?? $_SESSION['profile_image'] ?? 'img/default-avatar.svg') ?>" alt="Profile" id="profileAvatar">
         </div>
         <label class="btn btn-upload">
             <i class="bi bi-cloud-upload"></i> Upload a new Profile picture
@@ -149,17 +155,19 @@ require_once __DIR__ . '/../includes/header.php';
 </div>
 <div class="profile-card reset-card">
     <h3>Reset Password</h3>
-    <form method="POST" class="reset-form">
-        <?php // Top row - Email input + Get Code button ?>
+    <?php // Form for requesting reset code ?>
+    <form method="POST" classs="reset-form mb-3">
         <div class="reset-row">
             <input type="email" class="form-control" name="email" placeholder="Enter email" value="<?= htmlspecialchars($user['email']) ?>" required>
             <button type="submit" name="request_code" class="btn btn-secondary">Get Reset Code</button>
         </div>
-        <?php // Bottom row - Three input fields (code, new pass, confirm pass) ?>
+    </form>
+    <?php // Form for entering code and resetting password ?>
+    <form method="POST" class="reset-form">
         <div class="reset-row three-cols">
             <input type="text" class="form-control" name="reset_code" placeholder="Enter Code (sent to email)" value="<?= htmlspecialchars($_POST['reset_code'] ?? '') ?>" required>
-            <input type="password" class="form-control" name="new_password" placeholder="New Password" required>
-            <input type="password" class="form-control" name="confirm_password" placeholder="Confirm Password" required>
+            <input type="password" class="form-control" name="new_password" placeholder="New Password" required minlength="6">
+            <input type="password" class="form-control" name="confirm_password" placeholder="Confirm Password" required minlength="6">
         </div>
         <button type="submit" name="reset_password" class="btn btn-dark w-100">Update Password</button>
     </form>
@@ -198,7 +206,7 @@ require_once __DIR__ . '/../includes/header.php';
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: var(--logoColor);
+    background: #6c5ce7;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -210,7 +218,7 @@ require_once __DIR__ . '/../includes/header.php';
 .profile-avatar-large img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
 }
 
 /* Upload button styling */
@@ -290,6 +298,10 @@ require_once __DIR__ . '/../includes/header.php';
 
 .mt-3 {
     margin-top: 1rem;
+}
+
+.mb-3 {
+    margin-bottom: 1rem;
 }
 
 /* Responsive - stack cards on mobile */
