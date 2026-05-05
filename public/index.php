@@ -8,17 +8,6 @@ $userProfileImage = $_SESSION['profile_image'] ?? 'img/default-avatar.svg';
 
 $popularRooms = [];
 
-if (isLoggedIn()) {
-    $friendsList = [
-        ['id' => 2, 'display_name' => 'Bob Johnson', 'profile_image' => 'img/default-avatar.svg', 'is_online' => true],
-        ['id' => 3, 'display_name' => 'Bob Johnson', 'profile_image' => 'img/default-avatar.svg', 'is_online' => false],
-        ['id' => 4, 'display_name' => 'Bob Johnson', 'profile_image' => 'img/default-avatar.svg', 'is_online' => true], 
-    ];
-    $friends = $friendsList;
-} else {
-    $friends = [];
-}
-
 try {
     $dbconn = getDBConnection();
     if ($dbconn) {
@@ -67,7 +56,7 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         <?php else: ?>
             <?php foreach ($popularRooms as $room): ?>
-                <div class="room-card" data-room-id="<?= $room['id'] ?>">
+                <div class="room-card" onclick="openGroupChat(<?= $room['id'] ?>, '<?= htmlspecialchars($room['name']) ?>')">
                     <div class="room-header">
                         <div class="room-info">
                             <h4><?= htmlspecialchars($room['name']) ?></h4>
@@ -137,7 +126,7 @@ document.getElementById('roomPrivate').addEventListener('change', function() {
 document.querySelectorAll('.room-card').forEach(card => {
     card.addEventListener('click', () => {
         <?php if (isLoggedIn()): ?>
-            window.location.href = 'chatroom.php?id=' + card.dataset.roomId;
+            openGroupChat(card.dataset.roomId, card.querySelector('h4').textContent);
         <?php else: ?>
             window.location.href = 'auth/login.php';
         <?php endif; ?>

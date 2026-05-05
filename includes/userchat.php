@@ -219,6 +219,22 @@
     color: #080110;
 }
 
+.delete-msg-btn {
+    background: none;
+    border: none;
+    color: #999;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 0.8rem;
+    align-self: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.message:hover .delete-msg-btn {
+    opacity: 1;
+}
+
 @media (max-width: 480px) {
     .userchat-modal {
         bottom: 0;
@@ -232,13 +248,33 @@
 </style>
 
 <script>
+let currentChatUserId = null;
+let lastPrivateMessageId = 0;
+let privatePollInterval = null;
+let isPrivatePolling = false;
+
 function openUserChat(userId, userName, userAvatar) {
     document.getElementById('chatHeaderName').textContent = userName;
     document.getElementById('chatHeaderAvatar').src = userAvatar;
     document.getElementById('chatHeaderStatus').textContent = 'Online';
     document.getElementById('userChatModal').classList.add('open');
+    currentChatUserId = userId;
+    lastPrivateMessageId = 0;
     
+    loadPrivateMessages();
+    startPrivatePolling();
     hideChatBadge();
+}
+
+function openUserChatById(userId) {
+    fetch(`api/search.php?q=&user_id=${userId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.users && data.users.length > 0) {
+                const user = data.users[0];
+                openUserChat(userId, user.display_name || user.username, user.profile_image || 'img/default-avatar.svg');
+            }
+        });
 }
 
 function toggleUserChat() {
@@ -247,38 +283,132 @@ function toggleUserChat() {
 }
 
 function closeUserChat(e) {
-    e.stopPropagation();
+    if (e) e.stopPropagation();
     document.getElementById('userChatModal').classList.remove('open');
+    currentChatUserId = null;
+    lastPrivateMessageId = 0;
+    stopPrivatePolling();
 }
 
-function showChatBadge() {
-    document.getElementById('chatBadge').style.display = 'flex';
+function startPrivatePolling() {
+    stopPrivatePolling();
+    privatePollInterval = setTimeout(checkNewPrivateMessages, 3000);
 }
 
-function hideChatBadge() {
-    document.getElementById('chatBadge').style.display = 'none';
+function stopPrivatePolling() {
+    if (privatePollInterval) {
+        clearTimeout(privatePollInterval);
+        privatePollInterval = null;
+    }
+    isPrivatePolling = false;
 }
 
-function showFriendBadge(userId) {
-    document.getElementById('badge-' + userId).style.display = 'flex';
-}
-
-function hideFriendBadge(userId) {
-    document.getElementById('badge-' + userId).style.display = 'none';
+function loadPrivateMessages() {
+    if (!currentChatUserId) return;
+    
+    const messagesDiv = document.getElementById('userChatMessages');
+    messagesDiv.innerHTML = '<div class="chat-loading"><div class="spinner-border spinner-border-sm"></div><span class="ms-2">Loading...</span></div>';
+    
+    fetch(`api/get_messages.php?user_id=${currentChatUserId}`)
+        .then(res => res.json())
+        .then(data => {
+            messagesDiv.innerHTML = '';
+            if (data.success && data.messages) {
+                data.messages.forEach(msg => appendPrivateMessage(msg));
+                if (data.messages.length > 0) {
+                    lastPrivateMessageId = data.messages[data.messages.length - 1].id;
+                }
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+        })
+        .catch(err => {
+            messagesDiv.innerHTML = '<div class="text-muted text-center p-3">Error loading messages</div>';
+        });
 }
 
 function sendMessage() {
     var input = document.getElementById('messageInput');
     var text = input.value.trim();
-    if (!text) return;
+    if (!text || !currentChatUserId) return;
     
-    var messages = document.getElementById('userChatMessages');
-    var html = '<div class="message outgoing">' +
-        '<div class="message-bubble"><p class="message-text">' + escapeHtml(text) + '</p></div>' +
-        '<img src="img/default-avatar.svg" alt="" class="message-avatar"></div>';
-    messages.innerHTML += html;
-    messages.scrollTop = messages.scrollHeight;
-    input.value = '';
+    fetch('api/send_message.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `receiver_id=${currentChatUserId}&message=${encodeURIComponent(text)}`
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            input.value = '';
+            appendPrivateMessage({
+                id: data.message_id,
+                sender_name: '<?= $_SESSION['display_name'] ?>',
+                sender_avatar: '<?= getValidProfileImage($_SESSION['profile_image'] ?? null) ?>',
+                message: text,
+                is_own: true
+            });
+            document.getElementById('userChatMessages').scrollTop = document.getElementById('userChatMessages').scrollHeight;
+        }
+    })
+    .catch(err => console.error('Error sending message:', err));
+}
+
+function appendPrivateMessage(msg) {
+    const messagesDiv = document.getElementById('userChatMessages');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message' + (msg.is_own ? ' outgoing' : ' incoming');
+    msgDiv.dataset.messageId = msg.id;
+    msgDiv.innerHTML = `
+        <img src="${msg.sender_avatar || 'img/default-avatar.svg'}" alt="" class="message-avatar">
+        <div class="message-bubble">
+            ${!msg.is_own ? '<span class="message-user">' + escapeHtml(msg.sender_name) + '</span>' : ''}
+            <p class="message-text">${escapeHtml(msg.message)}</p>
+        </div>
+        ${msg.is_own ? '<button class="delete-msg-btn" onclick="deletePrivateMessage(' + msg.id + ')" title="Delete"><i class="bi bi-trash"></i></button>' : ''}
+    `;
+    messagesDiv.appendChild(msgDiv);
+}
+
+function deletePrivateMessage(messageId) {
+    if (!confirm('Delete this message?')) return;
+    
+    fetch('api/delete_message.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `message_id=${messageId}`
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+            if (msgDiv) msgDiv.remove();
+        } else {
+            alert(data.message || 'Failed to delete message');
+        }
+    })
+    .catch(err => alert('Error deleting message'));
+}
+
+function checkNewPrivateMessages() {
+    if (!currentChatUserId || isPrivatePolling) return;
+    
+    isPrivatePolling = true;
+    
+    fetch(`api/get_messages.php?user_id=${currentChatUserId}&after=${lastPrivateMessageId}`)
+        .then(res => res.json())
+        .then(data => {
+            isPrivatePolling = false;
+            if (data.success && data.messages && data.messages.length > 0) {
+                data.messages.forEach(msg => appendPrivateMessage(msg));
+                lastPrivateMessageId = data.messages[data.messages.length - 1].id;
+                document.getElementById('userChatMessages').scrollTop = document.getElementById('userChatMessages').scrollHeight;
+            }
+            startPrivatePolling();
+        })
+        .catch(err => {
+            isPrivatePolling = false;
+            startPrivatePolling();
+        });
 }
 
 function escapeHtml(text) {

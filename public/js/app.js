@@ -2,7 +2,22 @@ document.addEventListener('DOMContentLoaded', function() {
     initMobileMenu();
     initFriendActions();
     initSearchForm();
+    
+    // Update online status every 3 minutes
+    if (document.body.classList.contains('logged-in')) {
+        updateActivity();
+        setInterval(updateActivity, 180000);
+        
+        // Update friends' online status every minute
+        updateFriendStatus();
+        setInterval(updateFriendStatus, 60000);
+    }
 });
+
+function updateActivity() {
+    fetch('api/update_activity.php', {method: 'POST'})
+        .catch(err => console.log('Activity update failed'));
+}
 
 function initMobileMenu() {
     const offcanvasElement = document.getElementById('mobileMenu');
@@ -39,16 +54,91 @@ function initFriendActions() {
             openPrivateChat(userId);
         });
     });
+    
+    // Update online status every 3 minutes
+    if (document.body.classList.contains('logged-in')) {
+        updateFriendStatus();
+        setInterval(updateFriendStatus, 180000);
+    }
+}
+}
+
+function updateFriendStatus() {
+    document.querySelectorAll('.friend').forEach(friendDiv => {
+        const userId = friendDiv.dataset.userId;
+        if (!userId) return;
+        
+        fetch(`api/get_user_status.php?user_id=${userId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const dot = friendDiv.querySelector('.status-dot');
+                    if (dot) {
+                        if (data.is_online) {
+                            dot.classList.add('online');
+                            dot.classList.remove('offline');
+                        } else {
+                            dot.classList.add('offline');
+                            dot.classList.remove('online');
+                        }
+                    }
+                    // Update text
+                    const statusText = friendDiv.querySelector('.friend-status');
+                    if (statusText) {
+                        statusText.textContent = data.is_online ? 'Online' : 'Offline';
+                    }
+                }
+            })
+            .catch(err => console.log('Status check failed for user ' + userId));
+    });
+}
+    
+    document.querySelectorAll('.friend-item .btn-call').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const userId = this.dataset.userId;
+            initiateCall(userId);
+        });
+    });
+    
+    document.querySelectorAll('.friend-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const userId = this.dataset.userId;
+            openPrivateChat(userId);
+        });
+    });
 }
 
 function openPrivateChat(userId) {
     console.log('Opening private chat with user:', userId);
-    window.location.href = `chat.php?user=${userId}`;
+    // This will be handled by the userchat modal
+    openUserChatById(userId);
 }
 
 function initiateCall(userId) {
     console.log('Initiating call with user:', userId);
     alert('Voice calling feature coming soon!');
+}
+
+function respondToRequest(userId, action) {
+    if (!confirm(action === 'accept' ? 'Accept friend request?' : 'Decline friend request?')) {
+        return;
+    }
+    
+    fetch('api/respond_friend.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `user_id=${userId}&action=${action}`
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message || 'Failed to respond to request');
+        }
+    })
+    .catch(err => alert('Error processing request'));
 }
 
 function initSearchForm() {
@@ -75,9 +165,18 @@ function initSearchForm() {
                         if (data.users && data.users.length) {
                             html += '<div class="search-section"><strong>Users</strong>';
                             data.users.forEach(user => {
+                                let actionBtn = '';
+                                if (user.friend_status === null) {
+                                    actionBtn = `<button class="btn btn-sm btn-primary ms-2" onclick="addFriendFromSearch('${user.username}')">Add</button>`;
+                                } else if (user.friend_status === 'pending') {
+                                    actionBtn = '<span class="text-muted ms-2" style="font-size:0.8rem;">Pending</span>';
+                                } else if (user.friend_status === 'accepted') {
+                                    actionBtn = '<span class="text-success ms-2" style="font-size:0.8rem;">Friends</span>';
+                                }
                                 html += `<div class='search-item' onclick="window.location.href='profile.php?user=${user.id}'">`
                                     + `<img src='${sanitizeHTML(user.profile_image)}' class='avatar me-2' style='width:28px;height:28px;'>`
                                     + `${sanitizeHTML(user.display_name || user.username)}`
+                                    + actionBtn
                                     + '</div>';
                             });
                             html += '</div>';
@@ -134,4 +233,23 @@ function sanitizeHTML(str) {
     const temp = document.createElement('div');
     temp.textContent = str;
     return temp.innerHTML;
+}
+
+function addFriendFromSearch(username) {
+    fetch('add_friend.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `username=${encodeURIComponent(username)}&ajax=1`
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('Friend request sent!');
+            document.getElementById('headerSearchInput').value = '';
+            document.getElementById('searchResults').innerHTML = '';
+        } else {
+            alert(data.message || 'Failed to add friend');
+        }
+    })
+    .catch(err => alert('Error sending request'));
 }

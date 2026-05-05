@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
     <script src="js/app.js" defer></script>
 </head>
-<body>
+<body<?= isLoggedIn() ? ' class="logged-in"' : '' ?>>
     <header class="site-header">
         <div class="container-fluid">
             <div class="d-flex align-items-center justify-content-between py-2">

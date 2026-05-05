@@ -99,8 +99,8 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
     
-    <aside class="about-sidebar">
-        <h3>Live Statistics</h3>
+    <div class="stats-grid">
+        <h3 class="stats-title">Live Statistics</h3>
         
         <div class="stat-card">
             <div class="stat-icon"><i class="bi bi-chat-dots"></i></div>
@@ -125,7 +125,7 @@ require_once __DIR__ . '/../includes/header.php';
                 <span class="stat-label">Messages Sent</span>
             </div>
         </div>
-    </aside>
+    </div>
 </div>
 
 <style>
@@ -139,9 +139,18 @@ require_once __DIR__ . '/../includes/header.php';
     flex: 1;
 }
 
-.about-sidebar {
-    width: 300px;
-    min-width: 280px;
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+}
+
+.stats-title {
+    grid-column: 1 / -1;
+    margin-bottom: 10px;
 }
 
 .btn-back {
