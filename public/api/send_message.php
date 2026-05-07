@@ -25,13 +25,21 @@ try {
     $db = getDBConnection();
     
     if ($roomId) {
-        // Check if user is member of room
         $stmt = $db->prepare("SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?");
         $stmt->execute([$roomId, $_SESSION['user_id']]);
         
         if (!$stmt->fetch()) {
-            echo json_encode(['success' => false, 'message' => 'Not a member of this room']);
-            exit();
+            $stmt = $db->prepare("SELECT is_private FROM rooms WHERE id = ?");
+            $stmt->execute([$roomId]);
+            $room = $stmt->fetch();
+            
+            if ($room && !$room['is_private']) {
+                $stmt = $db->prepare("INSERT IGNORE INTO room_members (room_id, user_id, role) VALUES (?, ?, 'member')");
+                $stmt->execute([$roomId, $_SESSION['user_id']]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Not a member of this room']);
+                exit();
+            }
         }
         
         $stmt = $db->prepare("INSERT INTO messages (sender_id, room_id, message, created_at) VALUES (?, ?, ?, NOW())");

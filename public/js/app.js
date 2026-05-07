@@ -32,35 +32,28 @@ function initMobileMenu() {
 }
 
 function initFriendActions() {
-    document.querySelectorAll('.friend-item .btn-chat').forEach(btn => {
+    document.querySelectorAll('.friend .btn-chat').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
-            const userId = this.dataset.userId;
+            const userId = this.closest('.friend').dataset.userId;
             openPrivateChat(userId);
         });
     });
     
-    document.querySelectorAll('.friend-item .btn-call').forEach(btn => {
+    document.querySelectorAll('.friend .btn-call').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
-            const userId = this.dataset.userId;
+            const userId = this.closest('.friend').dataset.userId;
             initiateCall(userId);
         });
     });
     
-    document.querySelectorAll('.friend-item').forEach(item => {
+    document.querySelectorAll('.friend').forEach(item => {
         item.addEventListener('click', function() {
             const userId = this.dataset.userId;
             openPrivateChat(userId);
         });
     });
-    
-    // Update online status every 3 minutes
-    if (document.body.classList.contains('logged-in')) {
-        updateFriendStatus();
-        setInterval(updateFriendStatus, 180000);
-    }
-}
 }
 
 function updateFriendStatus() {
@@ -82,7 +75,6 @@ function updateFriendStatus() {
                             dot.classList.remove('online');
                         }
                     }
-                    // Update text
                     const statusText = friendDiv.querySelector('.friend-status');
                     if (statusText) {
                         statusText.textContent = data.is_online ? 'Online' : 'Offline';
@@ -90,22 +82,6 @@ function updateFriendStatus() {
                 }
             })
             .catch(err => console.log('Status check failed for user ' + userId));
-    });
-}
-    
-    document.querySelectorAll('.friend-item .btn-call').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const userId = this.dataset.userId;
-            initiateCall(userId);
-        });
-    });
-    
-    document.querySelectorAll('.friend-item').forEach(item => {
-        item.addEventListener('click', function() {
-            const userId = this.dataset.userId;
-            openPrivateChat(userId);
-        });
     });
 }
 
@@ -244,9 +220,9 @@ function addFriendFromSearch(username) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            alert('Friend request sent!');
             document.getElementById('headerSearchInput').value = '';
             document.getElementById('searchResults').innerHTML = '';
+            location.reload();
         } else {
             alert(data.message || 'Failed to add friend');
         }

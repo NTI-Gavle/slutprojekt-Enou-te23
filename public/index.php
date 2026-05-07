@@ -1,13 +1,76 @@
 <?php
 require_once __DIR__ . '/../includes/session.php';
 require_once __DIR__ . '/../database/db.php';
-use PDO;
 
 $pageTitle = "Home";
 $userProfileImage = $_SESSION['profile_image'] ?? 'img/default-avatar.svg';
 
 $popularRooms = [];
+$friends = [];
+$pendingRequests = [];
+$sentRequests = [];
 
+if (isset($_SESSION['user_id'])) {
+    try {
+        $dbconn = getDBConnection();
+        
+        // Fetch friends
+        $stmt = $dbconn->prepare("
+            SELECT DISTINCT u.id, u.display_name, u.profile_image,
+                   CASE WHEN u.last_activity >= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 1 ELSE 0 END as is_online
+            FROM friends f
+            JOIN users u ON u.id = 
+                CASE WHEN f.user_id = ? THEN f.friend_id ELSE f.user_id END
+            WHERE (f.user_id = ? OR f.friend_id = ?) 
+            AND f.status = 'accepted'
+        ");
+        $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id']]);
+        $friends = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($friends as &$friend) {
+            $friend['profile_image'] = getValidProfileImage($friend['profile_image'] ?? null);
+            $friend['is_online'] = (isset($friend['is_online']) && $friend['is_online'] == 1);
+        }
+        unset($friend);
+        
+        // Fetch pending requests
+        $stmt = $dbconn->prepare("
+            SELECT f.id, u.id as user_id, u.display_name, u.profile_image 
+            FROM friends f 
+            JOIN users u ON u.id = f.user_id 
+            WHERE f.friend_id = ? AND f.status = 'pending'
+        ");
+        $stmt->execute([$_SESSION['user_id']]);
+        $pendingRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($pendingRequests as &$req) {
+            $req['profile_image'] = getValidProfileImage($req['profile_image'] ?? null);
+        }
+        unset($req);
+        
+        // Fetch sent (outgoing) pending requests
+        $stmt = $dbconn->prepare("
+            SELECT f.id, u.id as user_id, u.display_name, u.profile_image 
+            FROM friends f 
+            JOIN users u ON u.id = f.friend_id
+            WHERE f.user_id = ? AND f.status = 'pending'
+        ");
+        $stmt->execute([$_SESSION['user_id']]);
+        $sentRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($sentRequests as &$req) {
+            $req['profile_image'] = getValidProfileImage($req['profile_image'] ?? null);
+        }
+        unset($req);
+        
+    } catch (Exception $e) {
+        $friends = [];
+        $pendingRequests = [];
+        $sentRequests = [];
+    }
+}
+
+// Fetch popular rooms
 try {
     $dbconn = getDBConnection();
     if ($dbconn) {
@@ -56,7 +119,8 @@ require_once __DIR__ . '/../includes/header.php';
             </div>
         <?php else: ?>
             <?php foreach ($popularRooms as $room): ?>
-                <div class="room-card" onclick="openGroupChat(<?= $room['id'] ?>, '<?= htmlspecialchars($room['name']) ?>')">
+                <?php $onclick = $room['is_private'] ? "joinPrivateRoom({$room['id']})" : "openGroupChat({$room['id']}, '" . htmlspecialchars($room['name'], ENT_QUOTES) . "')"; ?>
+                <div class="room-card" data-room-id="<?= $room['id'] ?>" data-room-name="<?= htmlspecialchars($room['name'], ENT_QUOTES) ?>" data-private="<?= $room['is_private'] ? 1 : 0 ?>">
                     <div class="room-header">
                         <div class="room-info">
                             <h4><?= htmlspecialchars($room['name']) ?></h4>
@@ -126,12 +190,39 @@ document.getElementById('roomPrivate').addEventListener('change', function() {
 document.querySelectorAll('.room-card').forEach(card => {
     card.addEventListener('click', () => {
         <?php if (isLoggedIn()): ?>
-            openGroupChat(card.dataset.roomId, card.querySelector('h4').textContent);
+            var roomId = card.dataset.roomId;
+            var roomName = card.dataset.roomName;
+            var isPrivate = card.dataset.private === '1';
+            if (isPrivate) {
+                joinPrivateRoom(roomId, roomName);
+            } else {
+                openGroupChat(parseInt(roomId), roomName);
+            }
         <?php else: ?>
             window.location.href = 'auth/login.php';
         <?php endif; ?>
     });
 });
+
+function joinPrivateRoom(roomId, roomName) {
+    var code = prompt('Enter join code for "' + roomName + '":');
+    if (!code || !code.trim()) return;
+    
+    fetch('api/join_room.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'room_id=' + roomId + '&chat_code=' + encodeURIComponent(code.trim())
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            openGroupChat(parseInt(roomId), roomName);
+        } else {
+            alert(data.message || 'Invalid code');
+        }
+    })
+    .catch(err => alert('Error joining room'));
+}
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>

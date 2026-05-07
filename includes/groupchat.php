@@ -344,9 +344,7 @@ function openGroupChat(roomId, roomName) {
     document.body.style.overflow = 'hidden';
     
     lastMessageId = 0;
-    loadMessages();
-    loadMembers();
-    
+    loadMessages().then(loadMembers);
     startPolling();
 }
 
@@ -376,16 +374,21 @@ function toggleMemberList() {
 }
 
 function loadMessages() {
-    if (!currentRoomId) return;
+    if (!currentRoomId) return Promise.resolve();
     
-    document.getElementById('chatLoading').style.display = 'flex';
-    document.getElementById('groupChatMessages').innerHTML = '';
-    document.getElementById('groupChatMessages').appendChild(document.getElementById('chatLoading'));
+    var loadingEl = document.getElementById('chatLoading');
+    var messagesEl = document.getElementById('groupChatMessages');
+    if (!loadingEl || !messagesEl) return Promise.resolve();
     
-    fetch(`api/get_messages.php?room_id=${currentRoomId}`)
+    loadingEl.style.display = 'flex';
+    messagesEl.innerHTML = '';
+    messagesEl.appendChild(loadingEl);
+    
+    return fetch(`api/get_messages.php?room_id=${currentRoomId}`)
         .then(res => res.json())
         .then(data => {
-            document.getElementById('chatLoading').style.display = 'none';
+            var loadingEl2 = document.getElementById('chatLoading');
+            if (loadingEl2) loadingEl2.style.display = 'none';
             if (data.success && data.messages) {
                 data.messages.forEach(msg => appendMessage(msg, false));
                 if (data.messages.length > 0) {
@@ -395,7 +398,8 @@ function loadMessages() {
             }
         })
         .catch(err => {
-            document.getElementById('chatLoading').style.display = 'none';
+            var loadingEl2 = document.getElementById('chatLoading');
+            if (loadingEl2) loadingEl2.style.display = 'none';
             console.error('Error loading messages:', err);
         });
 }
