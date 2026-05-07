@@ -14,6 +14,77 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Modal helper functions
+function showModal(title, message, buttons, onShow) {
+    const modal = document.getElementById('customModal');
+    document.getElementById('customModalTitle').textContent = title;
+    document.getElementById('customModalBody').textContent = message;
+    
+    // Set higher z-index for the modal
+    modal.style.zIndex = '1070';
+    
+    const footer = document.getElementById('customModalFooter');
+    footer.innerHTML = '';
+    
+    if (buttons) {
+        buttons.forEach(btn => {
+            const button = document.createElement('button');
+            button.className = btn.class || 'btn btn-secondary';
+            button.textContent = btn.text;
+            button.onclick = btn.onclick;
+            footer.appendChild(button);
+        });
+    } else {
+        const okBtn = document.createElement('button');
+        okBtn.className = 'btn btn-primary';
+        okBtn.textContent = 'OK';
+        okBtn.setAttribute('data-bs-dismiss', 'modal');
+        footer.appendChild(okBtn);
+    }
+    
+    if (onShow) onShow();
+    
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+    
+    // Ensure backdrop is on top of group chat
+    setTimeout(() => {
+        const backdrop = document.querySelector('#customModal + .modal-backdrop');
+        if (backdrop) {
+            backdrop.style.zIndex = '1065';
+        }
+        modal.style.zIndex = '1070';
+    }, 10);
+}
+
+function showAlert(title, message, type) {
+    const btnClass = type === 'success' ? 'btn-success' : type === 'error' ? 'btn-danger' : 'btn-primary';
+    showModal(title, message, [{ text: 'OK', class: 'btn ' + btnClass }]);
+}
+
+function showConfirm(title, message, onConfirm, onCancel, confirmClass) {
+    const buttons = [
+        { text: 'Cancel', class: 'btn btn-outline-secondary', action: 'dismiss' },
+        { text: 'Confirm', class: confirmClass || 'btn btn-primary', action: 'confirm' }
+    ];
+    
+    showModal(title, message, buttons, function() {
+        const modal = document.getElementById('customModal');
+        const confirmBtn = modal.querySelector('.modal-footer .btn:last-child');
+        const cancelBtn = modal.querySelector('.modal-footer .btn:first-child');
+        
+        cancelBtn.setAttribute('data-bs-dismiss', 'modal');
+        
+        confirmBtn.onclick = function() {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            document.querySelector('.modal-backdrop')?.remove();
+            document.body.classList.remove('modal-open');
+            if (onConfirm) onConfirm();
+        };
+    });
+}
+
 function updateActivity() {
     fetch('api/update_activity.php', {method: 'POST'})
         .catch(err => console.log('Activity update failed'));
@@ -93,28 +164,32 @@ function openPrivateChat(userId) {
 
 function initiateCall(userId) {
     console.log('Initiating call with user:', userId);
-    alert('Voice calling feature coming soon!');
+    showAlert('Coming Soon', 'Voice calling feature is coming soon!', 'info');
 }
 
 function respondToRequest(userId, action) {
-    if (!confirm(action === 'accept' ? 'Accept friend request?' : 'Decline friend request?')) {
-        return;
-    }
+    const title = action === 'accept' ? 'Accept Friend Request' : 'Decline Friend Request';
+    const message = action === 'accept' ? 'Are you sure you want to accept this friend request?' : 'Are you sure you want to decline this friend request?';
+    const confirmClass = action === 'accept' ? 'btn btn-success' : 'btn btn-danger';
     
-    fetch('api/respond_friend.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `user_id=${userId}&action=${action}`
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            location.reload();
-        } else {
-            alert(data.message || 'Failed to respond to request');
-        }
-    })
-    .catch(err => alert('Error processing request'));
+    showConfirm(title, message, function() {
+        fetch('api/respond_friend.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `user_id=${userId}&action=${action}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('_', Date.now());
+                window.location.href = url.toString();
+            } else {
+                showAlert('Error', data.message || 'Failed to respond to request', 'error');
+            }
+        })
+        .catch(err => showAlert('Error', 'Error processing request', 'error'));
+    }, null, confirmClass);
 }
 
 function initSearchForm() {
@@ -211,6 +286,49 @@ function sanitizeHTML(str) {
     return temp.innerHTML;
 }
 
+function addFriendAndRefresh(userId, username) {
+    fetch('add_friend.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `username=${encodeURIComponent(username)}&ajax=1`
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Success', 'Friend request sent!', 'success');
+            setTimeout(() => {
+                const url = new URL(window.location.href);
+                url.searchParams.set('_', Date.now());
+                window.location.href = url.toString();
+            }, 1500);
+        } else {
+            showAlert('Error', data.message || 'Failed to add friend', 'error');
+        }
+    })
+    .catch(err => showAlert('Error', 'Error sending request', 'error'));
+}
+
+function unfriend(userId) {
+    showConfirm('Unfriend', 'Are you sure you want to unfriend this user?', function() {
+        fetch('api/unfriend.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `user_id=${userId}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('_', Date.now());
+                window.location.href = url.toString();
+            } else {
+                showAlert('Error', data.message || 'Failed to unfriend', 'error');
+            }
+        })
+        .catch(err => showAlert('Error', 'Error processing request', 'error'));
+    }, null, 'btn btn-danger');
+}
+
 function addFriendFromSearch(username) {
     fetch('add_friend.php', {
         method: 'POST',
@@ -222,10 +340,15 @@ function addFriendFromSearch(username) {
         if (data.success) {
             document.getElementById('headerSearchInput').value = '';
             document.getElementById('searchResults').innerHTML = '';
-            location.reload();
+            showAlert('Success', 'Friend request sent!', 'success');
+            setTimeout(() => {
+                const url = new URL(window.location.href);
+                url.searchParams.set('_', Date.now());
+                window.location.href = url.toString();
+            }, 1500);
         } else {
-            alert(data.message || 'Failed to add friend');
+            showAlert('Error', data.message || 'Failed to add friend', 'error');
         }
     })
-    .catch(err => alert('Error sending request'));
+    .catch(err => showAlert('Error', 'Error sending request', 'error'));
 }

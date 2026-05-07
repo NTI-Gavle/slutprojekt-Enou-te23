@@ -342,7 +342,7 @@ function sendMessage() {
             input.value = '';
             appendPrivateMessage({
                 id: data.message_id,
-                sender_name: '<?= $_SESSION['display_name'] ?>',
+                sender_name: '<?= htmlspecialchars($_SESSION['display_name'] ?? 'You') ?>',
                 sender_avatar: '<?= getValidProfileImage($_SESSION['profile_image'] ?? null) ?>',
                 message: text,
                 is_own: true
@@ -354,6 +354,11 @@ function sendMessage() {
 }
 
 function appendPrivateMessage(msg) {
+    // Check if message already exists to prevent duplicates
+    if (document.querySelector(`[data-message-id="${msg.id}"]`)) {
+        return; // Message already displayed
+    }
+    
     const messagesDiv = document.getElementById('userChatMessages');
     const msgDiv = document.createElement('div');
     msgDiv.className = 'message' + (msg.is_own ? ' outgoing' : ' incoming');
@@ -370,23 +375,23 @@ function appendPrivateMessage(msg) {
 }
 
 function deletePrivateMessage(messageId) {
-    if (!confirm('Delete this message?')) return;
-    
-    fetch('api/delete_message.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `message_id=${messageId}`
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
-            if (msgDiv) msgDiv.remove();
-        } else {
-            alert(data.message || 'Failed to delete message');
-        }
-    })
-    .catch(err => alert('Error deleting message'));
+    showConfirm('Delete Message', 'Are you sure you want to delete this message?', function() {
+        fetch('api/delete_message.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `message_id=${messageId}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (msgDiv) msgDiv.remove();
+            } else {
+                showAlert('Error', data.message || 'Failed to delete message', 'error');
+            }
+        })
+        .catch(err => showAlert('Error', 'Error deleting message', 'error'));
+    }, null, 'btn btn-danger');
 }
 
 function checkNewPrivateMessages() {

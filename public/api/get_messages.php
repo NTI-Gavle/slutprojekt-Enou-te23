@@ -42,20 +42,20 @@ try {
         // Get messages
         if ($after > 0) {
             $stmt = $db->prepare("
-                SELECT m.*, u.display_name as sender_name, u.profile_image as sender_avatar
+                SELECT m.id, m.room_id, m.sender_id, m.receiver_id, m.content as message, m.created_at, u.display_name as sender_name, u.profile_image as sender_avatar
                 FROM messages m
                 JOIN users u ON u.id = m.sender_id
-                WHERE m.room_id = ? AND m.id > ?
+                WHERE m.room_id = ? AND m.id > ? AND m.is_deleted = 0
                 ORDER BY m.created_at ASC
                 LIMIT 50
             ");
             $stmt->execute([$roomId, $after]);
         } else {
             $stmt = $db->prepare("
-                SELECT m.*, u.display_name as sender_name, u.profile_image as sender_avatar
+                SELECT m.id, m.room_id, m.sender_id, m.receiver_id, m.content as message, m.created_at, u.display_name as sender_name, u.profile_image as sender_avatar
                 FROM messages m
                 JOIN users u ON u.id = m.sender_id
-                WHERE m.room_id = ?
+                WHERE m.room_id = ? AND m.is_deleted = 0
                 ORDER BY m.created_at DESC
                 LIMIT 50
             ");
@@ -67,21 +67,22 @@ try {
         // Private messages between current user and another user
         if ($after > 0) {
             $stmt = $db->prepare("
-                SELECT m.*, u.display_name as sender_name, u.profile_image as sender_avatar
+                SELECT m.id, m.room_id, m.sender_id, m.receiver_id, m.content as message, m.created_at, u.display_name as sender_name, u.profile_image as sender_avatar
                 FROM messages m
                 JOIN users u ON u.id = m.sender_id
                 WHERE ((m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?))
-                AND m.id > ?
+                AND m.id > ? AND m.is_deleted = 0
                 ORDER BY m.created_at ASC
                 LIMIT 50
             ");
             $stmt->execute([$_SESSION['user_id'], $userId, $userId, $_SESSION['user_id'], $after]);
         } else {
             $stmt = $db->prepare("
-                SELECT m.*, u.display_name as sender_name, u.profile_image as sender_avatar
+                SELECT m.id, m.room_id, m.sender_id, m.receiver_id, m.content as message, m.created_at, u.display_name as sender_name, u.profile_image as sender_avatar
                 FROM messages m
                 JOIN users u ON u.id = m.sender_id
                 WHERE ((m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?))
+                AND m.is_deleted = 0
                 ORDER BY m.created_at DESC
                 LIMIT 50
             ");

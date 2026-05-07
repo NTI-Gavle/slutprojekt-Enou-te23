@@ -17,7 +17,7 @@ if (!$roomId || !$userId) {
 
 if ($userId == $_SESSION['user_id']) {
     echo json_encode(['success' => false, 'message' => 'You cannot kick yourself']);
-    exit();
+    exit(); 
 }
 
 try {

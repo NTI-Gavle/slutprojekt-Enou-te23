@@ -5,12 +5,10 @@ require_once __DIR__ . '/../includes/session.php';
 if (!isset($friends)) {
     $friends = [];
     
-    // Fetch friends from database if user is logged in
     if (isset($_SESSION['user_id'])) {
         try {
             $dbconn = getDBConnection();
             if ($dbconn) {
-                // Get unique friends - only show each friend once
                 $stmt = $dbconn->prepare("
                     SELECT DISTINCT u.id, u.display_name, u.profile_image,
                            CASE WHEN u.last_activity >= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 1 ELSE 0 END as is_online
@@ -42,7 +40,6 @@ if (!isset($friends)) {
 if (!isset($pendingRequests)) {
     $pendingRequests = [];
     
-    // Fetch pending requests if user is logged in
     if (isset($_SESSION['user_id'])) {
         try {
             $dbconn = getDBConnection();
@@ -67,7 +64,6 @@ if (!isset($pendingRequests)) {
     }
 }
 
-// Fetch outgoing (sent) pending requests
 if (!isset($sentRequests)) {
     $sentRequests = [];
     
@@ -182,11 +178,18 @@ if (!isset($sentRequests)) {
                     <span class="friend-status"><?= $friend['is_online'] ? 'Online' : 'Offline' ?></span>
                 </div>
                 <div class="friend-btns">
-                    <button class="btn btn-icon btn-chat">
-                        <i class="bi bi-chat-left-text"></i>
-                        <span class="friend-badge" id="badge-<?= $friend['id'] ?>" style="display: none;">1</span>
-                    </button>
-                    <button class="btn btn-icon btn-call"><i class="bi bi-telephone"></i></button>
+                    <div class="dropdown">
+                        <button class="btn btn-icon btn-more" data-bs-toggle="dropdown" onclick="event.stopPropagation()">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profile.php?user=<?= $friend['id'] ?>"><i class="bi bi-person me-2"></i>View Profile</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); openPrivateChat(<?= $friend['id'] ?>)"><i class="bi bi-chat-left-text me-2"></i>Chat</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); initiateCall(<?= $friend['id'] ?>)"><i class="bi bi-telephone me-2"></i>Call</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); unfriend(<?= $friend['id'] ?>)"><i class="bi bi-person-x me-2"></i>Unfriend</a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         <?php endforeach; ?>

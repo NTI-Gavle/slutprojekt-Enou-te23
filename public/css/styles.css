@@ -381,6 +381,89 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-decoration: none;
+    color: inherit;
+}
+
+.friend-name:hover {
+    color: #6c5ce7;
+}
+
+.btn-unfriend {
+    color: #999;
+    border: none;
+    font-size: 0.9rem;
+}
+
+.btn-unfriend:hover {
+    color: #e74c3c;
+    background: #fef2f2;
+}
+
+.btn-more {
+    padding: 4px 6px;
+    font-size: 0.9rem;
+}
+
+.dropdown-menu {
+    font-size: 0.85rem;
+    min-width: 140px;
+}
+
+.dropdown-item {
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.dropdown-item.text-danger:hover {
+    background-color: #fff5f5;
+}
+
+.dropdown-item i {
+    width: 20px;
+    text-align: center;
+}
+
+#customModal .modal-content {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+
+#customModal {
+    z-index: 1070;
+}
+
+#customModal .modal-header {
+    border-bottom: 1px solid #eee;
+    padding: 16px 20px;
+}
+
+#customModal .modal-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+#customModal .modal-body {
+    padding: 20px;
+    font-size: 0.95rem;
+    color: #555;
+}
+
+#customModal .modal-footer {
+    border-top: 1px solid #eee;
+    padding: 12px 20px;
+    gap: 10px;
+}
+
+#customModal .modal-footer .btn {
+    padding: 8px 16px;
+    border-radius: 6px;
 }
 
 .friend-status {

@@ -10,6 +10,7 @@ if (!isLoggedIn()) {
 $roomId = $_POST['room_id'] ?? null;
 $receiverId = $_POST['receiver_id'] ?? null;
 $message = trim($_POST['message'] ?? '');
+$messageType = $roomId ? 'room' : 'private';
 
 if (empty($message)) {
     echo json_encode(['success' => false, 'message' => 'Message cannot be empty']);
@@ -42,11 +43,11 @@ try {
             }
         }
         
-        $stmt = $db->prepare("INSERT INTO messages (sender_id, room_id, message, created_at) VALUES (?, ?, ?, NOW())");
+        $stmt = $db->prepare("INSERT INTO messages (sender_id, room_id, content, message_type, created_at) VALUES (?, ?, ?, 'room', NOW())");
         $stmt->execute([$_SESSION['user_id'], $roomId, $message]);
         
     } else if ($receiverId) {
-        $stmt = $db->prepare("INSERT INTO messages (sender_id, receiver_id, message, created_at) VALUES (?, ?, ?, NOW())");
+        $stmt = $db->prepare("INSERT INTO messages (sender_id, receiver_id, content, message_type, created_at) VALUES (?, ?, ?, 'private', NOW())");
         $stmt->execute([$_SESSION['user_id'], $receiverId, $message]);
     }
     

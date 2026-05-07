@@ -31,7 +31,7 @@ try {
         exit();
     }
     
-    $stmt = $db->prepare("DELETE FROM messages WHERE id = ?");
+    $stmt = $db->prepare("UPDATE messages SET is_deleted = 1 WHERE id = ?");
     $stmt->execute([$messageId]);
     
     echo json_encode(['success' => true, 'message' => 'Message deleted']);

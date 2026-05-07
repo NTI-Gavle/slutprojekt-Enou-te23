@@ -418,20 +418,19 @@ function sendGroupMessage() {
     .then(data => {
         if (data.success) {
             input.value = '';
-            appendMessage({
-                id: data.message_id,
-                sender_name: '<?= $_SESSION['display_name'] ?>',
-                sender_avatar: '<?= getValidProfileImage($_SESSION['profile_image'] ?? null) ?>',
-                message: text,
-                is_own: true
-            }, true);
-            scrollToBottom();
+            // Reload messages to get proper format and avoid duplicates
+            loadMessages();
         }
     })
     .catch(err => console.error('Error sending message:', err));
 }
 
 function appendMessage(msg, prepend) {
+    // Check if message already exists to prevent duplicates
+    if (document.querySelector(`[data-message-id="${msg.id}"]`)) {
+        return;
+    }
+    
     const messagesDiv = document.getElementById('groupChatMessages');
     const msgDiv = document.createElement('div');
     msgDiv.className = 'group-message' + (msg.is_own ? ' own' : '');
@@ -448,23 +447,23 @@ function appendMessage(msg, prepend) {
 }
 
 function deleteMessage(messageId) {
-    if (!confirm('Delete this message?')) return;
-    
-    fetch('api/delete_message.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `message_id=${messageId}`
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
-            if (msgDiv) msgDiv.remove();
-        } else {
-            alert(data.message || 'Failed to delete message');
-        }
-    })
-    .catch(err => alert('Error deleting message'));
+    showConfirm('Delete Message', 'Are you sure you want to delete this message?', function() {
+        fetch('api/delete_message.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `message_id=${messageId}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+                if (msgDiv) msgDiv.remove();
+            } else {
+                showAlert('Error', data.message || 'Failed to delete message', 'error');
+            }
+        })
+        .catch(err => showAlert('Error', 'Error deleting message', 'error'));
+    }, null, 'btn btn-danger');
 }
 
 function checkNewMessages() {
@@ -520,21 +519,22 @@ function loadMembers() {
 }
 
 function kickMember(userId) {
-    if (!confirm('Are you sure you want to kick this member?')) return;
-    
-    fetch('api/kick_member.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: `room_id=${currentRoomId}&user_id=${userId}`
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            loadMembers();
-        } else {
-            alert(data.message || 'Failed to kick member');
-        }
-    });
+    showConfirm('Kick Member', 'Are you sure you want to kick this member from the group?', function() {
+        fetch('api/kick_member.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `room_id=${currentRoomId}&user_id=${userId}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                loadMembers();
+            } else {
+                showAlert('Error', data.message || 'Failed to kick member', 'error');
+            }
+        })
+        .catch(err => showAlert('Error', 'Error kicking member', 'error'));
+    }, null, 'btn btn-danger');
 }
 
 function scrollToBottom() {

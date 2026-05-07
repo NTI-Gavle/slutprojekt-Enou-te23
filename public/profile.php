@@ -14,6 +14,8 @@ if (!isLoggedIn()) {
 
 // Get current user ID from session
 $userId = $_SESSION['user_id'];
+$viewUserId = isset($_GET['user']) ? (int)$_GET['user'] : $userId;
+$isOwnProfile = $viewUserId === $userId;
 
 // Fetch current user data from database
 $stmt = getDBConnection()->prepare("SELECT * FROM users WHERE id = ?");
@@ -23,8 +25,38 @@ $user = $stmt->fetch(PDO::FETCH_ASSOC);
 // Get valid profile image path
 $profileImage = getValidProfileImage($user['profile_image'] ?? $_SESSION['profile_image'] ?? null);
 
-// Handle username update form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_username'])) {
+// Public profile view for other users
+$viewUser = null;
+$friendStatus = null;
+
+if (!$isOwnProfile) {
+    $stmt = getDBConnection()->prepare("SELECT id, username, display_name, profile_image FROM users WHERE id = ?");
+    $stmt->execute([$viewUserId]);
+    $viewUser = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$viewUser) {
+        header('Location: index.php');
+        exit();
+    }
+
+    // Determine friend status between current user and viewed user
+    $stmt = getDBConnection()->prepare("SELECT id, status, user_id FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?) LIMIT 1");
+    $stmt->execute([$userId, $viewUserId, $viewUserId, $userId]);
+    $friendship = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($friendship) {
+        $friendStatus = $friendship['status'];
+        if ($friendStatus === 'pending') {
+            $friendStatus = $friendship['user_id'] === $userId ? 'pending_sent' : 'pending_received';
+        }
+    }
+
+    $viewUser['profile_image'] = getValidProfileImage($viewUser['profile_image'] ?? null);
+    $pageTitle = ($viewUser['display_name'] ?? $viewUser['username']) . ' | Quacko';
+}
+
+// Handle username update form submission (own profile only)
+if ($isOwnProfile && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_username'])) {
     $newUsername = trim($_POST['username']);
     if (!empty($newUsername)) {
         try {
@@ -44,8 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_username'])) {
     exit();
 }
 
-// Handle password reset form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
+// Handle password reset form submission (own profile only)
+if ($isOwnProfile && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
     $code = trim($_POST['reset_code']);
     $newPass = $_POST['new_password'];
     $confPass = $_POST['confirm_password'];
@@ -82,8 +114,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
     exit();
 }
 
-// Handle reset code request (sends code via email)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_code'])) {
+// Handle reset code request (own profile only)
+if ($isOwnProfile && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_code'])) {
     $email = trim($_POST['email']);
     // Auto-fill email from user data
     if (empty($email)) {
@@ -126,6 +158,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_code'])) {
 require_once __DIR__ . '/../includes/header.php';
 ?>
 
+<?php if (!$isOwnProfile && $viewUser): ?>
+<a href="index.php" class="btn btn-back">
+    <i class="bi bi-arrow-left"></i> Back
+</a>
+<?= displayFlashMessages() ?>
+<div class="profile-row">
+    <div class="profile-card">
+        <div class="profile-avatar-large">
+            <img src="<?= htmlspecialchars($viewUser['profile_image']) ?>" alt="">
+        </div>
+        <h3 class="public-profile-name"><?= htmlspecialchars($viewUser['display_name'] ?? $viewUser['username']) ?></h3>
+        <p class="text-muted">@<?= htmlspecialchars($viewUser['username']) ?></p>
+        <div class="friend-actions mt-2">
+            <?php if ($friendStatus === null): ?>
+                <button class="btn btn-primary btn-sm" onclick="addFriendAndRefresh(<?= $viewUser['id'] ?>, '<?= htmlspecialchars($viewUser['username'], ENT_QUOTES) ?>')">Add Friend</button>
+            <?php elseif ($friendStatus === 'pending_sent'): ?>
+                <span class="badge bg-warning text-dark p-2">Friend request sent</span>
+            <?php elseif ($friendStatus === 'pending_received'): ?>
+                <button class="btn btn-success btn-sm me-1" onclick="respondToRequest(<?= $viewUser['id'] ?>, 'accept')">Accept</button>
+                <button class="btn btn-outline-danger btn-sm" onclick="respondToRequest(<?= $viewUser['id'] ?>, 'decline')">Decline</button>
+            <?php elseif ($friendStatus === 'accepted'): ?>
+                <span class="badge bg-success p-2 me-2">Friends</span>
+                <button class="btn btn-danger btn-sm" onclick="unfriend(<?= $viewUser['id'] ?>)">Unfriend</button>
+            <?php endif; ?>
+        </div>
+        
+        <?php if ($friendStatus === 'accepted'): ?>
+        <div class="friend-actions mt-3">
+            <div class="dropdown">
+                <button class="btn btn-outline btn-sm" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); openUserChatById(<?= $viewUser['id'] ?>)"><i class="bi bi-chat-left-text me-2"></i>Chat</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); initiateCall(<?= $viewUser['id'] ?>)"><i class="bi bi-telephone me-2"></i>Call</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); unfriend(<?= $viewUser['id'] ?>)"><i class="bi bi-person-x me-2"></i>Unfriend</a></li>
+                </ul>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
+<?php if ($friendStatus === 'accepted'): ?>
+<div class="chat-stats-section mt-4">
+    <div class="profile-card">
+        <h6 class="text-muted mb-3">Chat History with <?= htmlspecialchars($viewUser['display_name'] ?? $viewUser['username']) ?></h6>
+        <div class="chart-container"><canvas id="chatHistoryChart"></canvas></div>
+        <div class="stats-info mt-2" id="statsInfo">
+            <span class="text-muted">Loading stats...</span>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+<?php endif; ?>
+
+<?php if ($isOwnProfile): ?>
 <a href="index.php" class="btn btn-back">
     <i class="bi bi-arrow-left"></i> Back
 </a>
@@ -156,10 +244,10 @@ require_once __DIR__ . '/../includes/header.php';
 <div class="profile-card reset-card">
     <h3>Reset Password</h3>
     <?php // Form for requesting reset code ?>
-    <form method="POST" classs="reset-form mb-3">
-        <div class="reset-row">
-            <input type="email" class="form-control" name="email" placeholder="Enter email" value="<?= htmlspecialchars($user['email']) ?>" required>
-            <button type="submit" name="request_code" class="btn btn-secondary">Get Reset Code</button>
+    <form method="POST" class="reset-form mb-3">
+        <div class="reset-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <input type="email" class="form-control" name="email" placeholder="Enter email" value="<?= htmlspecialchars($user['email']) ?>" required style="flex: 1; min-width: 150px;">
+            <button type="submit" name="request_code" class="btn btn-secondary" style="white-space: nowrap;">Get Reset Code</button>
         </div>
     </form>
     <?php // Form for entering code and resetting password ?>
@@ -173,7 +261,81 @@ require_once __DIR__ . '/../includes/header.php';
     </form>
 </div>
 
+<div class="chat-stats-section mt-4">
+    <div class="profile-card">
+        <h6 class="text-muted mb-3">My Chat Activity (All Messages)</h6>
+        <div class="chart-container"><canvas id="allChatHistoryChart"></canvas></div>
+        <div class="stats-info mt-2" id="allStatsInfo">
+            <span class="text-muted">Loading stats...</span>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <style>
+.public-profile-name {
+    font-size: 1.4rem;
+    margin-bottom: 2px;
+}
+
+.friend-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.chat-stats {
+    text-align: center;
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 12px;
+    margin-top: 20px;
+}
+
+.chat-stats-section {
+    width: 100%;
+}
+
+.chat-stats-section .profile-card {
+    text-align: center;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+@media (max-width: 576px) {
+    .chart-container {
+        height: 220px;
+        padding: 10px;
+    }
+}
+
+.chat-stats h6 {
+    margin-bottom: 10px;
+}
+
+#chatHistoryChart,
+#allChatHistoryChart {
+    display: block;
+    margin: 0 auto;
+    background: white;
+    border-radius: 8px;
+}
+
+.stats-info {
+    font-size: 0.85rem;
+}
+
 /* Page title styling */
 .profile-title {
     font-size: 2rem;
@@ -258,7 +420,20 @@ require_once __DIR__ . '/../includes/header.php';
 /* Horizontal row for email + button or 3 inputs */
 .reset-row {
     display: flex;
-    gap: 10px;
+    gap: 15px;
+}
+
+@media (max-width: 576px) {
+    .reset-row:not(.three-cols) {
+        flex-direction: column;
+    }
+    .reset-row:not(.three-cols) .btn-secondary {
+        width: 100%;
+    }
+}
+
+.reset-row.three-cols input {
+    margin-bottom: 10px;
 }
 
 /* Three equal columns for reset code + passwords */
@@ -320,6 +495,7 @@ require_once __DIR__ . '/../includes/header.php';
 }
 </style>
 
+<?php if ($isOwnProfile): ?>
 <script>
 // Handle profile picture upload
 function uploadAvatar(input) {
@@ -359,5 +535,223 @@ function uploadAvatar(input) {
     });
 }
 </script>
+<?php endif; ?>
+
+<?php if (!$isOwnProfile && isset($viewUser) && $friendStatus === 'accepted'): ?>
+<script>
+console.log('Chart loaded:', typeof Chart);
+function loadChatStats() {
+    console.log('loadChatStats called');
+    const canvas = document.getElementById('chatHistoryChart');
+    if (!canvas) {
+        console.log('Canvas not found!');
+        return;
+    }
+    if (typeof Chart === 'undefined') {
+        console.log('Chart.js not loaded!');
+        return;
+    }
+    
+    const statsInfo = document.getElementById('statsInfo');
+    
+    console.log('Fetching API...');
+    fetch('api/get_message_stats.php?friend_id=<?= $viewUser['id'] ?>')
+        .then(res => res.json())
+        .then(data => {
+            console.log('API response:', data);
+            if (data.success && data.data_points && data.data_points.length > 0) {
+                drawChart(canvas, data);
+                statsInfo.innerHTML = `<span class="text-muted">${data.total_messages} messages over ${data.days_friends} days</span>`;
+            } else {
+                statsInfo.innerHTML = '<span class="text-muted">No messages yet</span>';
+            }
+        })
+        .catch(err => {
+            console.error('Error:', err);
+            statsInfo.innerHTML = '<span class="text-muted">Could not load stats</span>';
+        });
+}
+
+function drawChart(canvas, data) {
+    const points = data.data_points;
+    if (!points || points.length === 0) return;
+    
+    if (canvas.chart) canvas.chart.destroy();
+    
+    const labels = points.map(p => p.day === 0 ? 'Day 0' : 'Day ' + p.day);
+    const values = points.map(p => p.count);
+    
+    const ctx = canvas.getContext('2d');
+    
+    canvas.chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Messages',
+                data: values,
+                borderColor: '#6c5ce7',
+                backgroundColor: 'rgba(108, 92, 231, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#6c5ce7',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#888', font: { size: 11 }, maxTicksLimit: 6 }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f0f0f0' },
+                    ticks: { color: '#888', font: { size: 11 }, stepSize: 1 }
+                }
+            }
+        }
+    });
+}
+
+loadChatStats();
+</script>
+<?php endif; ?>
+
+<script>
+function drawChart(canvas, data) {
+    const points = data.data_points;
+    if (!points || points.length === 0) return;
+    
+    if (canvas.chart) canvas.chart.destroy();
+    
+    const labels = points.map(p => p.day === 0 ? 'Day 0' : 'Day ' + p.day);
+    const values = points.map(p => p.count);
+    
+    const ctx = canvas.getContext('2d');
+    
+    canvas.chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Messages',
+                data: values,
+                borderColor: '#6c5ce7',
+                backgroundColor: 'rgba(108, 92, 231, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#6c5ce7',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#888', font: { size: 11 }, maxTicksLimit: 6 }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: '#f0f0f0' },
+                    ticks: { color: '#888', font: { size: 11 }, stepSize: 1 }
+                }
+            }
+        }
+    });
+}
+</script>
+
+<?php if ($isOwnProfile): ?>
+<script>
+// All messages chart for own profile
+function loadAllChatStats() {
+    const canvas = document.getElementById('allChatHistoryChart');
+    if (!canvas) {
+        console.log('Canvas not found for allChatHistoryChart');
+        return;
+    }
+    if (typeof Chart === 'undefined') {
+        console.log('Chart.js not loaded!');
+        return;
+    }
+    
+    console.log('loadAllChatStats called, canvas found');
+    const statsInfo = document.getElementById('allStatsInfo');
+    
+    fetch('api/get_all_message_stats.php')
+        .then(res => res.json())
+        .then(data => {
+            console.log('All messages API response:', data);
+            if (data.success && data.data_points && data.data_points.length > 0) {
+                drawChart(canvas, data);
+                statsInfo.innerHTML = `<span class="text-muted">${data.total_messages} messages over ${data.days_active} days</span>`;
+            } else {
+                statsInfo.innerHTML = '<span class="text-muted">No messages yet</span>';
+            }
+        })
+        .catch(err => {
+            console.error('Error loading all stats:', err);
+            statsInfo.innerHTML = '<span class="text-muted">Could not load stats</span>';
+        });
+}
+</script>
+<?php endif; ?>
+
+<?php if ($isOwnProfile): ?>
+<script>
+console.log('Own profile chart loaded:', typeof Chart);
+function loadAllChatStats() {
+    const canvas = document.getElementById('allChatHistoryChart');
+    if (!canvas) {
+        console.log('Canvas not found for allChatHistoryChart');
+        return;
+    }
+    if (typeof Chart === 'undefined') {
+        console.log('Chart.js not loaded!');
+        return;
+    }
+    
+    console.log('loadAllChatStats called, canvas found');
+    const statsInfo = document.getElementById('allStatsInfo');
+    
+    fetch('api/get_all_message_stats.php')
+        .then(res => res.json())
+        .then(data => {
+            console.log('All messages API response:', data);
+            if (data.success && data.data_points && data.data_points.length > 0) {
+                drawChart(canvas, data);
+                statsInfo.innerHTML = `<span class="text-muted">${data.total_messages} messages over ${data.days_active} days</span>`;
+            } else {
+                statsInfo.innerHTML = '<span class="text-muted">No messages yet</span>';
+            }
+        })
+        .catch(err => {
+            console.error('Error loading all stats:', err);
+            statsInfo.innerHTML = '<span class="text-muted">Could not load stats</span>';
+        });
+}
+
+loadAllChatStats();
+</script>
+<?php endif; ?>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
