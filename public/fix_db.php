@@ -31,6 +31,47 @@ try {
         echo "<br>updated_at column already exists.";
     }
     
+    // Check if read_status column exists in messages table
+    $stmt = $db->query("DESCRIBE messages");
+    $msgColumns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    if (!in_array('read_status', $msgColumns)) {
+        $db->exec("ALTER TABLE messages ADD COLUMN read_status TINYINT(1) DEFAULT 0 AFTER is_deleted");
+        echo "<br>Added read_status column to messages table!";
+    } else {
+        echo "<br>read_status column already exists.";
+    }
+    
+    // Check if is_admin column exists in users table
+    $stmt = $db->query("DESCRIBE users");
+    $userColumns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    if (!in_array('is_admin', $userColumns)) {
+        $db->exec("ALTER TABLE users ADD COLUMN is_admin TINYINT(1) DEFAULT 0 AFTER last_activity");
+        echo "<br>Added is_admin column to users table!";
+    } else {
+        echo "<br>is_admin column already exists.";
+    }
+    
+    // Check if role column exists in room_members table
+    $stmt = $db->query("DESCRIBE room_members");
+    $rmColumns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    if (!in_array('role', $rmColumns)) {
+        $db->exec("ALTER TABLE room_members ADD COLUMN role ENUM('admin', 'moderator', 'member') DEFAULT 'member' AFTER joined_at");
+        echo "<br>Added role column to room_members table!";
+    } else {
+        echo "<br>role column already exists.";
+    }
+    
+    // Check if warning column exists in users table
+    if (!in_array('warning', $userColumns)) {
+        $db->exec("ALTER TABLE users ADD COLUMN warning TEXT NULL AFTER is_admin");
+        echo "<br>Added warning column to users table!";
+    } else {
+        echo "<br>warning column already exists.";
+    }
+    
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage();
 }

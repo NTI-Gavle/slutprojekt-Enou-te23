@@ -17,7 +17,8 @@ if (!$messageId) {
 try {
     $db = getDBConnection();
     
-    $stmt = $db->prepare("SELECT sender_id FROM messages WHERE id = ?");
+    // Get message with room info
+    $stmt = $db->prepare("SELECT m.sender_id, m.room_id FROM messages m WHERE m.id = ?");
     $stmt->execute([$messageId]);
     $message = $stmt->fetch();
     
@@ -26,8 +27,24 @@ try {
         exit();
     }
     
-    if ($message['sender_id'] != $_SESSION['user_id']) {
-        echo json_encode(['success' => false, 'message' => 'You can only delete your own messages']);
+    // Check if user can delete (own message OR moderator/admin of the room)
+    $canDelete = false;
+    
+    if ($message['sender_id'] == $_SESSION['user_id']) {
+        $canDelete = true;
+    } elseif ($message['room_id']) {
+        // Check if user is moderator/admin in this room
+        $stmt = $db->prepare("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?");
+        $stmt->execute([$message['room_id'], $_SESSION['user_id']]);
+        $member = $stmt->fetch();
+        
+        if ($member && in_array($member['role'], ['admin', 'moderator'])) {
+            $canDelete = true;
+        }
+    }
+    
+    if (!$canDelete) {
+        echo json_encode(['success' => false, 'message' => 'You cannot delete this message']);
         exit();
     }
     

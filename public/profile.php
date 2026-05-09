@@ -55,6 +55,15 @@ if (!$isOwnProfile) {
     $pageTitle = ($viewUser['display_name'] ?? $viewUser['username']) . ' | Quacko';
 }
 
+// Handle clearing warning
+if ($isOwnProfile && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['clear_warning'])) {
+    $stmt = getDBConnection()->prepare("UPDATE users SET warning = NULL WHERE id = ?");
+    $stmt->execute([$userId]);
+    $user['warning'] = null;
+    header('Location: profile.php');
+    exit();
+}
+
 // Handle username update form submission (own profile only)
 if ($isOwnProfile && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_username'])) {
     $newUsername = trim($_POST['username']);
@@ -157,6 +166,18 @@ if ($isOwnProfile && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['requ
 // Load header (includes HTML head, nav, etc.)
 require_once __DIR__ . '/../includes/header.php';
 ?>
+
+<?php if ($isOwnProfile && !empty($user['warning'])): ?>
+<div class="alert alert-warning d-flex align-items-center justify-content-between" role="alert">
+    <div>
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong>Warning:</strong> <?= htmlspecialchars($user['warning']) ?>
+    </div>
+    <form method="POST" style="display:inline;">
+        <button type="submit" name="clear_warning" class="btn btn-sm btn-outline-dark">Dismiss</button>
+    </form>
+</div>
+<?php endif; ?>
 
 <?php if (!$isOwnProfile && $viewUser): ?>
 <a href="index.php" class="btn btn-back">

@@ -106,6 +106,13 @@ if (!isset($sentRequests)) {
         <button type="submit" class="btn btn-add btn-sm"><i class="bi bi-plus-lg"></i></button>
     </form>
 </div>
+
+<div id="unreadMessagesSection" style="display: none;">
+    <div class="sidebar-title" style="padding-bottom: 5px;">
+        <h6 class="mb-0 text-danger">Unread Messages</h6>
+    </div>
+    <div id="unreadMessagesList" class="unread-messages-list"></div>
+</div>
 <?php endif; ?>
 
 <div class="friends">

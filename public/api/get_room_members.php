@@ -17,11 +17,13 @@ if (!$roomId) {
 try {
     $db = getDBConnection();
     
-    // Check if current user is admin
+    // Check current user's role
     $stmt = $db->prepare("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?");
     $stmt->execute([$roomId, $_SESSION['user_id']]);
     $currentMember = $stmt->fetch();
-    $isAdmin = $currentMember && $currentMember['role'] === 'admin';
+    $currentRole = $currentMember['role'] ?? null;
+    $isAdmin = $currentRole === 'admin';
+    $isModerator = $currentRole === 'moderator';
     
     // Get all members
     $stmt = $db->prepare("
@@ -29,18 +31,31 @@ try {
         FROM room_members rm
         JOIN users u ON u.id = rm.user_id
         WHERE rm.room_id = ?
-        ORDER BY rm.role DESC, u.display_name ASC
+        ORDER BY FIELD(rm.role, 'admin', 'moderator', 'member'), u.display_name ASC
     ");
     $stmt->execute([$roomId]);
     $members = $stmt->fetchAll();
     
-    // Add is_admin flag and validate profile images
+    // Add flags for each member
     foreach ($members as &$member) {
         $member['profile_image'] = getValidProfileImage($member['profile_image'] ?? null);
-        $member['is_admin'] = ($member['id'] == $_SESSION['user_id'] && $isAdmin);
+        
+        // Can this member be kicked by current user?
+        $member['can_kick'] = false;
+        
+        if ($isAdmin) {
+            // Admin can kick anyone except other admins
+            $member['can_kick'] = ($member['role'] !== 'admin');
+        } elseif ($isModerator) {
+            // Moderator can only kick regular members
+            $member['can_kick'] = ($member['role'] === 'member' && $member['id'] !== $_SESSION['user_id']);
+        }
+        
+        // Is this the current user?
+        $member['is_me'] = ($member['id'] == $_SESSION['user_id']);
     }
     
-    echo json_encode(['success' => true, 'members' => $members, 'is_admin' => $isAdmin]);
+    echo json_encode(['success' => true, 'members' => $members, 'is_admin' => $isAdmin, 'is_moderator' => $isModerator, 'user_role' => $currentRole]);
     
 } catch (Exception $e) {
     echo json_encode(['success' => false, 'message' => 'Database error']);

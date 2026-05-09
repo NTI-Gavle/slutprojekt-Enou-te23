@@ -34,13 +34,14 @@ function getCurrentUser(): ?array {
     ];
 }
 
-function loginUser(int $userId, string $username, string $email, string $displayName, ?string $profileImage = null): void {
+function loginUser(int $userId, string $username, string $email, string $displayName, ?string $profileImage = null, int $isAdmin = 0): void {
     startSecureSession();
     $_SESSION['user_id'] = $userId;
     $_SESSION['username'] = $username;
     $_SESSION['email'] = $email;
     $_SESSION['display_name'] = $displayName;
     $_SESSION['profile_image'] = getValidProfileImage($profileImage);
+    $_SESSION['is_admin'] = $isAdmin;
     $_SESSION['login_time'] = time();
 }
 

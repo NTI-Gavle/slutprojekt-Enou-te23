@@ -11,8 +11,74 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update friends' online status every minute
         updateFriendStatus();
         setInterval(updateFriendStatus, 60000);
+        
+        // Check for unread messages every 10 seconds
+        checkUnreadMessages();
+        setInterval(checkUnreadMessages, 10000);
     }
 });
+
+// Unread message notification
+function checkUnreadMessages() {
+    fetch('api/get_unread_count.php')
+        .then(res => res.json())
+        .then(data => {
+            const badge = document.getElementById('chatBadge');
+            const unreadSection = document.getElementById('unreadMessagesSection');
+            const unreadList = document.getElementById('unreadMessagesList');
+            
+            if (data.success && data.unread_count > 0) {
+                if (badge) {
+                    badge.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
+                    badge.style.display = 'flex';
+                }
+                
+                // Show senders in unread section
+                if (unreadSection && unreadList && data.senders && data.senders.length > 0) {
+                    unreadList.innerHTML = '';
+                    data.senders.forEach(sender => {
+                        const img = sender.profile_image || 'img/default-avatar.svg';
+                        const name = sender.display_name || sender.username;
+                        const preview = sender.preview.length > 30 ? sender.preview.substring(0, 30) + '...' : sender.preview;
+                        const countText = sender.count > 1 ? ` (${sender.count})` : '';
+                        
+                        const item = document.createElement('div');
+                        item.className = 'unread-message-item';
+                        item.onclick = () => openPrivateChat(sender.sender_id);
+                        item.innerHTML = `
+                            <img src="${img}" alt="${name}">
+                            <div>
+                                <div class="unread-sender">${escapeHtml(name)}${countText}</div>
+                                <div class="unread-preview">${escapeHtml(preview)}</div>
+                            </div>
+                        `;
+                        unreadList.appendChild(item);
+                    });
+                    unreadSection.style.display = 'block';
+                }
+            } else {
+                if (badge) badge.style.display = 'none';
+                if (unreadSection) unreadSection.style.display = 'none';
+            }
+        })
+        .catch(err => console.error('Error checking unread:', err));
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Mark messages as read when viewing
+function markMessagesAsRead(userId) {
+    fetch('api/mark_read.php?user_id=' + userId)
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) checkUnreadMessages();
+        })
+        .catch(err => console.error('Error marking read:', err));
+}
 
 // Modal helper functions
 function showModal(title, message, buttons, onShow) {
@@ -158,6 +224,8 @@ function updateFriendStatus() {
 
 function openPrivateChat(userId) {
     console.log('Opening private chat with user:', userId);
+    // Mark messages as read when opening chat
+    markMessagesAsRead(userId);
     // This will be handled by the userchat modal
     openUserChatById(userId);
 }

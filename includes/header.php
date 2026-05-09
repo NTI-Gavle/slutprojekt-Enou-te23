@@ -12,6 +12,42 @@
     <script src="js/app.js" defer></script>
 </head>
 <body<?= isLoggedIn() ? ' class="logged-in"' : '' ?>>
+<?php if (isLoggedIn()): ?>
+<?php 
+$db = getDBConnection();
+$stmt = $db->prepare("SELECT warning FROM users WHERE id = ?");
+$stmt->execute([$_SESSION['user_id']]);
+$currentUser = $stmt->fetch();
+if (!empty($currentUser['warning'])): 
+?>
+<div class="modal fade show" id="warningModal" data-bs-backdrop="static" tabindex="-1" style="display: block;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill"></i> Warning Received</h5>
+            </div>
+            <div class="modal-body">
+                <p><?= htmlspecialchars($currentUser['warning']) ?></p>
+                <p class="text-muted small">Please read and follow our community guidelines.</p>
+            </div>
+            <div class="modal-footer">
+                <form method="POST" action="profile.php">
+                    <button type="submit" name="clear_warning" class="btn btn-primary">I Understand</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop fade show" style="display: block;"></div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var modal = new bootstrap.Modal(document.getElementById('warningModal'));
+    modal.show();
+});
+</script>
+<?php endif; ?>
+<?php endif; ?>
+
     <header class="site-header">
         <div class="container-fluid">
             <div class="d-flex align-items-center justify-content-between py-2">
@@ -36,8 +72,12 @@
                     <?php if (isset($_SESSION['user_id'])): ?>
                         <?php 
                         $img = getValidProfileImage($_SESSION['profile_image'] ?? null);
+                        $isAdmin = isset($_SESSION['is_admin']) && $_SESSION['is_admin'] == 1;
                         ?>
                         <img src="<?= $img ?>" alt="Profile" class="avatar">
+                        <?php if ($isAdmin): ?>
+                        <a href="admin.php" class="btn btn-danger btn-sm">Admin</a>
+                        <?php endif; ?>
                         <a href="profile.php" class="btn btn-outline btn-sm">Profile</a>
                         <a href="auth/process-logout.php" class="btn btn-outline btn-sm">Logout</a>
                     <?php else: ?>
@@ -77,6 +117,11 @@
                     <span><?= htmlspecialchars($_SESSION['display_name'] ?? 'User') ?></span>
                 </div>
                 <a href="profile.php" class="btn btn-outline w-100 mb-2">Profile</a>
+                <hr>
+                <a href="index.php" class="btn btn-outline w-100 mb-2">Home</a>
+                <a href="about.php" class="btn btn-outline w-100 mb-2">About Us</a>
+                <a href="legal.php" class="btn btn-outline w-100 mb-2">Legal</a>
+                <hr>
                 <a href="auth/process-logout.php" class="btn btn-outline w-100">Logout</a>
             <?php else: ?>
                 <a href="auth/login.php" class="btn btn-outline w-100 mb-2">Login</a>

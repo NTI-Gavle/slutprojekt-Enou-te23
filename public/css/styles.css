@@ -616,6 +616,51 @@ body {
     position: relative;
 }
 
+.unread-messages-list {
+    max-height: 150px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+}
+
+.unread-message-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #fff5f5;
+    border-left: 3px solid #e74c3c;
+    cursor: pointer;
+    margin-bottom: 5px;
+    border-radius: 0 6px 6px 0;
+    transition: background 0.2s;
+}
+
+.unread-message-item:hover {
+    background: #ffe0e0;
+}
+
+.unread-message-item img {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.unread-message-item .unread-sender {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #333;
+}
+
+.unread-message-item .unread-preview {
+    font-size: 0.75rem;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+}
+
 .friend-badge {
     position: absolute;
     top: -4px;

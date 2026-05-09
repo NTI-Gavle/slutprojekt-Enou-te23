@@ -9,6 +9,9 @@
                 </div>
             </div>
             <div class="groupchat-header-actions">
+                <button class="groupchat-action-btn" id="roomCodeBtn" title="Change Code" onclick="showRoomCodeSettings()" style="display: none;">
+                    <i class="bi bi-key"></i>
+                </button>
                 <button class="groupchat-action-btn" title="Members" onclick="toggleMemberList()">
                     <i class="bi bi-people"></i>
                 </button>
@@ -499,6 +502,12 @@ function loadMembers() {
                 const container = document.getElementById('memberListContent');
                 document.getElementById('groupChatMemberCount').textContent = data.members.length + ' members';
                 
+                // Show code button for admins
+                const codeBtn = document.getElementById('roomCodeBtn');
+                if (codeBtn) {
+                    codeBtn.style.display = data.is_admin ? 'inline-flex' : 'none';
+                }
+                
                 let html = '';
                 data.members.forEach(member => {
                     html += `
@@ -506,9 +515,12 @@ function loadMembers() {
                         <img src="${member.profile_image || 'img/default-avatar.svg'}" alt="" class="member-avatar">
                         <div class="member-info">
                             <span class="member-name">${escapeHtml(member.display_name)}</span>
-                            <span class="member-role">${member.role}</span>
+                            <span class="member-role">${member.role === 'admin' ? '<i class="bi bi-shield-fill"></i> Admin' : member.role === 'moderator' ? '<i class="bi bi-star-fill"></i> Moderator' : 'Member'}</span>
                         </div>
-                        ${member.is_admin ? '<div class="member-actions"><button class="btn-small btn-danger" onclick="kickMember(' + member.id + ')">Kick</button></div>' : ''}
+                        ${member.can_kick ? '<div class="member-actions">' + 
+                            (member.role === 'member' ? '<button class="btn-small btn-warning" onclick="promoteMember(' + member.id + ', \'promote\')">Promote</button>' : 
+                            member.role === 'moderator' ? '<button class="btn-small btn-secondary" onclick="promoteMember(' + member.id + ', \'demote\')">Demote</button>' : '') +
+                            ' <button class="btn-small btn-danger" onclick="kickMember(' + member.id + ')">Kick</button></div>' : ''}
                     </div>
                     `;
                 });
@@ -535,6 +547,49 @@ function kickMember(userId) {
         })
         .catch(err => showAlert('Error', 'Error kicking member', 'error'));
     }, null, 'btn btn-danger');
+}
+
+function promoteMember(userId, action) {
+    const title = action === 'promote' ? 'Promote to Moderator' : 'Demote to Member';
+    showConfirm(title, action === 'promote' ? 'Make this user a moderator?' : 'Remove moderator privileges?', function() {
+        fetch('api/manage_moderator.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `room_id=${currentRoomId}&user_id=${userId}&action=${action}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                loadMembers();
+            } else {
+                showAlert('Error', data.message || 'Failed to update role', 'error');
+            }
+        })
+        .catch(err => showAlert('Error', 'Error updating role', 'error'));
+    });
+}
+
+function showRoomCodeSettings() {
+    const currentCode = document.getElementById('groupChatRoomName').dataset.code || '';
+    const newCode = prompt('Enter new chat code (min 4 characters):', currentCode);
+    if (newCode && newCode.length >= 4) {
+        fetch('api/update_room_code.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `room_id=${currentRoomId}&chat_code=${encodeURIComponent(newCode)}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('Success', 'Chat code updated!', 'success');
+            } else {
+                showAlert('Error', data.message || 'Failed to update chat code', 'error');
+            }
+        })
+        .catch(err => showAlert('Error', 'Error updating chat code', 'error'));
+    } else if (newCode && newCode.length < 4) {
+        showAlert('Error', 'Chat code must be at least 4 characters', 'error');
+    }
 }
 
 function scrollToBottom() {
