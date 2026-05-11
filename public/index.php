@@ -25,7 +25,7 @@ require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <section>
-    <h1 class="hero-title">Welcome to Quacko</h1>
+    <h1 class="hero-title" style="background: linear-gradient(to right, #AD46FF 0%, #F6339A 50%, #2B7FFF 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Welcome to Quacko</h1>
     <p class="hero-subtitle">Connect with friends, join chat rooms, and communicate seamlessly.</p>
     
     <?php if (isLoggedIn()): ?>
@@ -142,23 +142,73 @@ document.querySelectorAll('.room-card').forEach(card => {
 });
 
 function joinPrivateRoom(roomId, roomName) {
-    var code = prompt('Enter join code for "' + roomName + '":');
-    if (!code || !code.trim()) return;
+    // Create a custom modal for entering the code
+    const modalHtml = `
+        <div class="modal fade show" id="joinRoomModal" style="display: block;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header" style="background: linear-gradient(-60deg, #B148FF 0%, #F4369E 100%); color: white;">
+                        <h5 class="modal-title">Join Private Room</h5>
+                        <button type="button" class="btn-close btn-close-white" onclick="closeJoinRoomModal()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Enter the chat code to join "<strong>${roomName}</strong>":</p>
+                        <input type="text" id="joinRoomCode" class="form-control" placeholder="Enter code" maxlength="8" autofocus>
+                        <p id="joinRoomError" class="text-danger mt-2" style="display: none;"></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeJoinRoomModal()">Cancel</button>
+                        <button type="button" class="btn btn-primary" style="background: linear-gradient(-60deg, #B148FF 0%, #F4369E 100%); border: none;" onclick="submitJoinRoomCode(${roomId}, '${roomName.replace(/'/g, "\\'")}')">Join</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show" id="joinRoomBackdrop" style="display: block;" onclick="closeJoinRoomModal()"></div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    document.getElementById('joinRoomCode').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            submitJoinRoomCode(roomId, roomName);
+        }
+    });
+}
+
+function closeJoinRoomModal() {
+    document.getElementById('joinRoomModal')?.remove();
+    document.querySelector('.modal-backdrop')?.remove();
+}
+
+function submitJoinRoomCode(roomId, roomName) {
+    const code = document.getElementById('joinRoomCode').value.trim();
+    const errorEl = document.getElementById('joinRoomError');
+    
+    if (!code) {
+        errorEl.textContent = 'Please enter a code';
+        errorEl.style.display = 'block';
+        return;
+    }
     
     fetch('api/join_room.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'room_id=' + roomId + '&chat_code=' + encodeURIComponent(code.trim())
+        body: 'room_id=' + roomId + '&chat_code=' + encodeURIComponent(code)
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
+            closeJoinRoomModal();
             openGroupChat(parseInt(roomId), roomName);
         } else {
-            alert(data.message || 'Invalid code');
+            errorEl.textContent = data.message || 'Invalid code';
+            errorEl.style.display = 'block';
         }
     })
-    .catch(err => alert('Error joining room'));
+    .catch(err => {
+        errorEl.textContent = 'Error joining room';
+        errorEl.style.display = 'block';
+    });
 }
 </script>
 

@@ -23,6 +23,12 @@ function getDBConnection(): PDO {
                     PDO::ATTR_EMULATE_PREPARES => false
                 ]
             );
+            
+            // Set timezone to UTC
+            $dbconn->exec("SET time_zone = '+00:00'");
+            
+            // Set PHP to UTC as well
+            date_default_timezone_set('UTC');
         } catch (PDOException $e) {
             error_log('Database connection failed: ' . $e->getMessage());
             throw new Exception('Database connection failed');

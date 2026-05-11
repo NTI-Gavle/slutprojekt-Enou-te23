@@ -7,6 +7,30 @@
     --auth-background: linear-gradient(-60deg, #B148FF 0%, #F4369E 50%, #427EFF 100%);
 }
 
+/* ============================================
+   TEMPORARY COLOR CHANGES - START
+   Remove this section when done testing
+   ============================================ */
+
+/* Dropdown menu */
+.dropdown-menu {
+    border-color: #E0E5FF !important;
+}
+.dropdown-item:hover {
+    background: #F0F2FF !important;
+    color: #B148FF !important;
+}
+
+/* Hamburger menu */
+
+.hamburger i {
+    color: black !important;
+}
+
+/* ============================================
+   TEMPORARY COLOR CHANGES - END
+   ============================================ */
+
 * {
     margin: 0;
     padding: 0;

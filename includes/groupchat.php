@@ -36,6 +36,10 @@
         </div>
         
         <div class="groupchat-input">
+            <input type="file" id="groupFileInput" multiple accept="image/*,.pdf,.txt,.doc,.docx" style="display: none;" onchange="handleGroupFileUpload(this)">
+            <button class="input-btn" title="Attach Files" onclick="document.getElementById('groupFileInput').click()">
+                <i class="bi bi-paperclip"></i>
+            </button>
             <button class="input-btn" title="Emoji" onclick="toggleEmojiPicker()">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
@@ -51,6 +55,7 @@
                 </svg>
             </button>
         </div>
+        <div id="groupFilePreview" class="file-preview-container" style="display: none;"></div>
     </div>
 </div>
 
@@ -250,6 +255,73 @@
     border-top: 1px solid #ddd;
 }
 
+.file-preview-container {
+    padding: 10px 20px;
+    background: #f0f0f0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-top: 1px solid #ddd;
+}
+
+.file-preview-item {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: white;
+    border: 1px solid #ddd;
+}
+
+.file-preview-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.file-preview-item .remove-file {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.message-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.message-attachment {
+    max-width: 200px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.message-attachment img {
+    max-width: 100%;
+    border-radius: 8px;
+}
+
+.message-attachment a {
+    display: block;
+    padding: 8px 12px;
+    background: #f0f0f0;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #333;
+}
+
 .group-message {
     display: flex;
     align-items: flex-start;
@@ -434,6 +506,25 @@ function appendMessage(msg, prepend) {
         return;
     }
     
+    // Parse attachments
+    let attachmentsHtml = '';
+    if (msg.attachments) {
+        try {
+            const attachments = typeof msg.attachments === 'string' ? JSON.parse(msg.attachments) : msg.attachments;
+            if (Array.isArray(attachments) && attachments.length > 0) {
+                attachmentsHtml = '<div class="message-attachments">' + attachments.map(file => {
+                    if (file.type && file.type.startsWith('image/')) {
+                        return `<div class="message-attachment"><img src="${file.path}" alt="${file.name}" onclick="window.open('${file.path}', '_blank')"></div>`;
+                    } else {
+                        return `<div class="message-attachment"><a href="${file.path}" target="_blank"><i class="bi bi-file-earmark"></i> ${file.name}</a></div>`;
+                    }
+                }).join('') + '</div>';
+            }
+        } catch (e) {
+            console.error('Error parsing attachments:', e);
+        }
+    }
+    
     const messagesDiv = document.getElementById('groupChatMessages');
     const msgDiv = document.createElement('div');
     msgDiv.className = 'group-message' + (msg.is_own ? ' own' : '');
@@ -442,7 +533,7 @@ function appendMessage(msg, prepend) {
         <img src="${msg.sender_avatar || 'img/default-avatar.svg'}" alt="" class="group-message-avatar">
         <div class="group-message-content">
             <span class="group-message-sender">${escapeHtml(msg.sender_name)}</span>
-            <div class="group-message-bubble">${escapeHtml(msg.message)}</div>
+            <div class="group-message-bubble">${escapeHtml(msg.message || '')}${attachmentsHtml}</div>
         </div>
         ${msg.is_own ? '<button class="delete-msg-btn" onclick="deleteMessage(' + msg.id + ')" title="Delete"><i class="bi bi-trash"></i></button>' : ''}
     `;
@@ -601,6 +692,127 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// File handling for group chat
+let groupPendingFiles = [];
+
+function handleGroupFileUpload(input) {
+    const files = input.files;
+    if (!files || files.length === 0) return;
+    
+    if (groupPendingFiles.length + files.length > 4) {
+        showAlert('Warning', 'Maximum 4 files allowed', 'warning');
+        return;
+    }
+    
+    // Store file objects for preview and upload
+    Array.from(files).forEach(file => {
+        groupPendingFiles.push({
+            file: file,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            preview: URL.createObjectURL(file)
+        });
+        updateGroupFilePreview();
+    });
+    
+    input.value = '';
+}
+
+function updateGroupFilePreview() {
+    const container = document.getElementById('groupFilePreview');
+    if (groupPendingFiles.length === 0) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.style.display = 'flex';
+    container.innerHTML = groupPendingFiles.map((file, index) => `
+        <div class="file-preview-item">
+            ${file.type.startsWith('image/') 
+                ? `<img src="${file.preview}" alt="${file.name}">`
+                : `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:10px;padding:5px;text-align:center;word-break:break-all;">${file.name}</div>`}
+            <button class="remove-file" onclick="removeGroupFile(${index})">×</button>
+        </div>
+    `).join('');
+}
+
+function removeGroupFile(index) {
+    URL.revokeObjectURL(groupPendingFiles[index].preview);
+    groupPendingFiles.splice(index, 1);
+    updateGroupFilePreview();
+}
+
+// Update sendGroupMessage to include files
+const originalSendGroupMessage = sendGroupMessage;
+sendGroupMessage = function() {
+    const input = document.getElementById('groupMessageInput');
+    const message = input.value.trim();
+    
+    if (message || groupPendingFiles.length > 0) {
+        const formData = new FormData();
+        formData.append('room_id', currentRoomId);
+        formData.append('message', message);
+        
+        if (groupPendingFiles.length > 0) {
+            // Add actual file objects to FormData
+            groupPendingFiles.forEach(f => {
+                formData.append('files[]', f.file);
+            });
+            
+            fetch('api/upload_file.php', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(uploadData => {
+                console.log('Upload response:', uploadData);
+                if (uploadData.success && uploadData.files && uploadData.files.length > 0) {
+                    console.log('Files uploaded:', uploadData.files);
+                    const attachments = JSON.stringify(uploadData.files);
+                    sendMessageWithAttachments(currentRoomId, null, message, attachments);
+                } else if (message) {
+                    console.log('No files, sending message only');
+                    sendMessageWithAttachments(currentRoomId, null, message, null);
+                } else {
+                    showAlert('Error', uploadData.message || 'Failed to upload files', 'error');
+                }
+                groupPendingFiles = [];
+                updateGroupFilePreview();
+            })
+            .catch(err => {
+                console.error('Upload error:', err);
+                if (message) sendMessageWithAttachments(currentRoomId, null, message, null);
+                groupPendingFiles = [];
+                updateGroupFilePreview();
+            });
+        } else {
+            sendMessageWithAttachments(currentRoomId, null, message, null);
+        }
+        
+        input.value = '';
+    }
+};
+
+function sendMessageWithAttachments(roomId, receiverId, message, attachments) {
+    const formData = new FormData();
+    if (roomId) formData.append('room_id', roomId);
+    if (receiverId) formData.append('receiver_id', receiverId);
+    formData.append('message', message);
+    if (attachments) formData.append('attachments', attachments);
+    
+    fetch('api/send_message.php', { method: 'POST', body: formData })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            if (roomId) {
+                loadMessages();
+            }
+        } else {
+            showAlert('Error', data.message || 'Failed to send message', 'error');
+        }
+    })
+    .catch(err => console.error('Error sending message:', err));
 }
 
 // Close modal on overlay click (not on modal click)

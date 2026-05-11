@@ -22,7 +22,7 @@ unset($_SESSION['login_success']);
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="../css/styles.css">
 </head>
-<body>
+<body style="background: linear-gradient(-60deg, #B148FF 0%, #F4369E 50%, #427EFF 100%); min-height: 100vh;">
     <div class="auth-container">
         <div class="auth-card">
             <div class="d-flex align-items-center justify-content-center mb-4">

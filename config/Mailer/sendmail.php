@@ -31,7 +31,7 @@ function sendMail($to, $subject, $body, $altBody = '', $attachments = [])
         $mail->Port       = 587;                     // 587 (tls) or 465 (ssl)
 
         /* ---------- SENDER ---------- */
-        $mail->setFrom('ntimailsender@gmail.com', 'Camp Connect');
+        $mail->setFrom('ntimailsender@gmail.com', 'Quacko Support');
 
         /* ---------- RECIPIENT(S) ---------- */
         if (is_array($to)) {

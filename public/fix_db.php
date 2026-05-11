@@ -72,6 +72,17 @@ try {
         echo "<br>warning column already exists.";
     }
     
+    // Check if attachments column exists in messages table
+    $stmt = $db->query("DESCRIBE messages");
+    $msgColumns = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    
+    if (!in_array('attachments', $msgColumns)) {
+        $db->exec("ALTER TABLE messages ADD COLUMN attachments JSON NULL AFTER content");
+        echo "<br>Added attachments column to messages table!";
+    } else {
+        echo "<br>attachments column already exists.";
+    }
+    
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage();
 }

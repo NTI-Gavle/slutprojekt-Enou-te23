@@ -275,8 +275,8 @@ require_once __DIR__ . '/../includes/header.php';
     <form method="POST" class="reset-form">
         <div class="reset-row three-cols">
             <input type="text" class="form-control" name="reset_code" placeholder="Enter Code (sent to email)" value="<?= htmlspecialchars($_POST['reset_code'] ?? '') ?>" required>
-            <input type="password" class="form-control" name="new_password" placeholder="New Password" required minlength="6">
-            <input type="password" class="form-control" name="confirm_password" placeholder="Confirm Password" required minlength="6">
+            <input type="password" class="form-control" name="new_password" placeholder="New Password" required minlength="8">
+            <input type="password" class="form-control" name="confirm_password" placeholder="Confirm Password" required minlength="8">
         </div>
         <button type="submit" name="reset_password" class="btn btn-dark w-100">Update Password</button>
     </form>

@@ -10,10 +10,11 @@ if (!isLoggedIn()) {
 $roomId = $_POST['room_id'] ?? null;
 $receiverId = $_POST['receiver_id'] ?? null;
 $message = trim($_POST['message'] ?? '');
+$attachments = $_POST['attachments'] ?? null;
 $messageType = $roomId ? 'room' : 'private';
 
-if (empty($message)) {
-    echo json_encode(['success' => false, 'message' => 'Message cannot be empty']);
+if (empty($message) && empty($attachments)) {
+    echo json_encode(['success' => false, 'message' => 'Message or file required']);
     exit();
 }
 
@@ -43,12 +44,15 @@ try {
             }
         }
         
-        $stmt = $db->prepare("INSERT INTO messages (sender_id, room_id, content, message_type, created_at) VALUES (?, ?, ?, 'room', NOW())");
-        $stmt->execute([$_SESSION['user_id'], $roomId, $message]);
+        $attachmentsJson = $attachments ? json_encode(json_decode($attachments)) : null;
+        
+        $stmt = $db->prepare("INSERT INTO messages (sender_id, room_id, content, attachments, message_type, created_at) VALUES (?, ?, ?, ?, 'room', NOW())");
+        $stmt->execute([$_SESSION['user_id'], $roomId, $message, $attachmentsJson]);
         
     } else if ($receiverId) {
-        $stmt = $db->prepare("INSERT INTO messages (sender_id, receiver_id, content, message_type, created_at) VALUES (?, ?, ?, 'private', NOW())");
-        $stmt->execute([$_SESSION['user_id'], $receiverId, $message]);
+        $attachmentsJson = $attachments ? json_encode(json_decode($attachments)) : null;
+        $stmt = $db->prepare("INSERT INTO messages (sender_id, receiver_id, content, attachments, message_type, created_at) VALUES (?, ?, ?, ?, 'private', NOW())");
+        $stmt->execute([$_SESSION['user_id'], $receiverId, $message, $attachmentsJson]);
     }
     
     $messageId = $db->lastInsertId();

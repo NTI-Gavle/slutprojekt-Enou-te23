@@ -12,41 +12,44 @@
     <script src="js/app.js" defer></script>
 </head>
 <body<?= isLoggedIn() ? ' class="logged-in"' : '' ?>>
-<?php if (isLoggedIn()): ?>
 <?php 
-$db = getDBConnection();
-$stmt = $db->prepare("SELECT warning FROM users WHERE id = ?");
-$stmt->execute([$_SESSION['user_id']]);
-$currentUser = $stmt->fetch();
-if (!empty($currentUser['warning'])): 
-?>
-<div class="modal fade show" id="warningModal" data-bs-backdrop="static" tabindex="-1" style="display: block;">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-warning">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill"></i> Warning Received</h5>
-            </div>
-            <div class="modal-body">
-                <p><?= htmlspecialchars($currentUser['warning']) ?></p>
-                <p class="text-muted small">Please read and follow our community guidelines.</p>
-            </div>
-            <div class="modal-footer">
-                <form method="POST" action="profile.php">
-                    <button type="submit" name="clear_warning" class="btn btn-primary">I Understand</button>
-                </form>
+if (isLoggedIn()) {
+    require_once __DIR__ . '/../database/db.php';
+    $db = getDBConnection();
+    $stmt = $db->prepare("SELECT warning FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $currentUser = $stmt->fetch();
+    if (!empty($currentUser['warning'])) {
+        ?>
+        <div class="modal fade show" id="warningModal" data-bs-backdrop="static" tabindex="-1" style="display: block;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill"></i> Warning Received</h5>
+                    </div>
+                    <div class="modal-body">
+                        <p><?= htmlspecialchars($currentUser['warning']) ?></p>
+                        <p class="text-muted small">Please read and follow our community guidelines.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <form method="POST" action="profile.php">
+                            <button type="submit" name="clear_warning" class="btn btn-primary">I Understand</button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-</div>
-<div class="modal-backdrop fade show" style="display: block;"></div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var modal = new bootstrap.Modal(document.getElementById('warningModal'));
-    modal.show();
-});
-</script>
-<?php endif; ?>
-<?php endif; ?>
+        <div class="modal-backdrop fade show" style="display: block;"></div>
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var modal = new bootstrap.Modal(document.getElementById('warningModal'));
+            modal.show();
+        });
+        </script>
+        <?php
+    }
+}
+?>
 
     <header class="site-header">
         <div class="container-fluid">
