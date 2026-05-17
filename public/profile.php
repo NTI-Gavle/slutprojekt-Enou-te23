@@ -560,6 +560,11 @@ function uploadAvatar(input) {
 
 <?php if (!$isOwnProfile && isset($viewUser) && $friendStatus === 'accepted'): ?>
 <script>
+/**
+ * Loads chat statistics for the conversation between current user and viewed user.
+ * Displays a line chart showing message count over time using Chart.js.
+ * Only shown when viewing a friend's profile (not own profile).
+ */
 console.log('Chart loaded:', typeof Chart);
 function loadChatStats() {
     console.log('loadChatStats called');
@@ -572,9 +577,9 @@ function loadChatStats() {
         console.log('Chart.js not loaded!');
         return;
     }
-    
+
     const statsInfo = document.getElementById('statsInfo');
-    
+
     console.log('Fetching API...');
     fetch('api/get_message_stats.php?friend_id=<?= $viewUser['id'] ?>')
         .then(res => res.json())
@@ -593,73 +598,30 @@ function loadChatStats() {
         });
 }
 
-function drawChart(canvas, data) {
-    const points = data.data_points;
-    if (!points || points.length === 0) return;
-    
-    if (canvas.chart) canvas.chart.destroy();
-    
-    const labels = points.map(p => p.day === 0 ? 'Day 0' : 'Day ' + p.day);
-    const values = points.map(p => p.count);
-    
-    const ctx = canvas.getContext('2d');
-    
-    canvas.chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Messages',
-                data: values,
-                borderColor: '#6c5ce7',
-                backgroundColor: 'rgba(108, 92, 231, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: '#6c5ce7',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 5,
-                pointHoverRadius: 7
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
-            scales: {
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#888', font: { size: 11 }, maxTicksLimit: 6 }
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: { color: '#f0f0f0' },
-                    ticks: { color: '#888', font: { size: 11 }, stepSize: 1 }
-                }
-            }
-        }
-    });
-}
-
 loadChatStats();
 </script>
 <?php endif; ?>
 
 <script>
+/**
+ * Draws a line chart using Chart.js library.
+ * @param {HTMLCanvasElement} canvas - The canvas element to render the chart on
+ * @param {Object} data - Chart data containing data_points array with day and count
+ */
 function drawChart(canvas, data) {
     const points = data.data_points;
     if (!points || points.length === 0) return;
-    
+
+    // Destroy existing chart instance if present to prevent memory leaks
     if (canvas.chart) canvas.chart.destroy();
-    
+
+    // Map data points to labels (Day X) and values (message count)
     const labels = points.map(p => p.day === 0 ? 'Day 0' : 'Day ' + p.day);
     const values = points.map(p => p.count);
-    
+
     const ctx = canvas.getContext('2d');
-    
+
+    // Create new Chart.js instance with purple color scheme
     canvas.chart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -703,42 +665,11 @@ function drawChart(canvas, data) {
 
 <?php if ($isOwnProfile): ?>
 <script>
-// All messages chart for own profile
-function loadAllChatStats() {
-    const canvas = document.getElementById('allChatHistoryChart');
-    if (!canvas) {
-        console.log('Canvas not found for allChatHistoryChart');
-        return;
-    }
-    if (typeof Chart === 'undefined') {
-        console.log('Chart.js not loaded!');
-        return;
-    }
-    
-    console.log('loadAllChatStats called, canvas found');
-    const statsInfo = document.getElementById('allStatsInfo');
-    
-    fetch('api/get_all_message_stats.php')
-        .then(res => res.json())
-        .then(data => {
-            console.log('All messages API response:', data);
-            if (data.success && data.data_points && data.data_points.length > 0) {
-                drawChart(canvas, data);
-                statsInfo.innerHTML = `<span class="text-muted">${data.total_messages} messages over ${data.days_active} days</span>`;
-            } else {
-                statsInfo.innerHTML = '<span class="text-muted">No messages yet</span>';
-            }
-        })
-        .catch(err => {
-            console.error('Error loading all stats:', err);
-            statsInfo.innerHTML = '<span class="text-muted">Could not load stats</span>';
-        });
-}
-</script>
-<?php endif; ?>
-
-<?php if ($isOwnProfile): ?>
-<script>
+/**
+ * Loads all chat statistics for the current user's entire message history.
+ * Displays a line chart showing total messages over time.
+ * Only shown on user's own profile page.
+ */
 console.log('Own profile chart loaded:', typeof Chart);
 function loadAllChatStats() {
     const canvas = document.getElementById('allChatHistoryChart');
@@ -750,10 +681,10 @@ function loadAllChatStats() {
         console.log('Chart.js not loaded!');
         return;
     }
-    
+
     console.log('loadAllChatStats called, canvas found');
     const statsInfo = document.getElementById('allStatsInfo');
-    
+
     fetch('api/get_all_message_stats.php')
         .then(res => res.json())
         .then(data => {
@@ -771,6 +702,7 @@ function loadAllChatStats() {
         });
 }
 
+// Auto-load stats when page loads
 loadAllChatStats();
 </script>
 <?php endif; ?>

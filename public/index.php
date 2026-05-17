@@ -7,17 +7,20 @@ $userProfileImage = $_SESSION['profile_image'] ?? 'img/default-avatar.svg';
 
 $popularRooms = [];
 
-// Fetch popular rooms
+// Fetch popular chat rooms sorted by member count (most popular first)
 try {
     $dbconn = getDBConnection();
     if ($dbconn) {
-        $stmt = $dbconn->prepare("SELECT r.id, r.name, r.description, r.tag, r.is_private, 
-            (SELECT COUNT(*) FROM room_members WHERE room_id = r.id) as member_count 
+        // Query retrieves rooms with their member count via subquery
+        // Results limited to 20 most popular rooms
+        $stmt = $dbconn->prepare("SELECT r.id, r.name, r.description, r.tag, r.is_private,
+            (SELECT COUNT(*) FROM room_members WHERE room_id = r.id) as member_count
             FROM rooms r ORDER BY member_count DESC LIMIT 20");
         $stmt->execute();
         $popularRooms = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 } catch (Exception $e) {
+    // If query fails, display empty state
     $popularRooms = [];
 }
 
@@ -142,6 +145,13 @@ document.querySelectorAll('.room-card').forEach(card => {
 });
 
 function joinPrivateRoom(roomId, roomName) {
+    // Check if user already has access (remembered)
+    const verifiedRooms = JSON.parse(localStorage.getItem('verifiedRooms') || '[]');
+    if (verifiedRooms.includes(parseInt(roomId))) {
+        openGroupChat(parseInt(roomId), roomName);
+        return;
+    }
+    
     // Create a custom modal for entering the code
     const modalHtml = `
         <div class="modal fade show" id="joinRoomModal" style="display: block;">
@@ -154,6 +164,10 @@ function joinPrivateRoom(roomId, roomName) {
                     <div class="modal-body">
                         <p>Enter the chat code to join "<strong>${roomName}</strong>":</p>
                         <input type="text" id="joinRoomCode" class="form-control" placeholder="Enter code" maxlength="8" autofocus>
+                        <div class="form-check mt-2">
+                            <input type="checkbox" class="form-check-input" id="rememberRoomCode">
+                            <label class="form-check-label" for="rememberRoomCode">Remember this room (no need to enter code again)</label>
+                        </div>
                         <p id="joinRoomError" class="text-danger mt-2" style="display: none;"></p>
                     </div>
                     <div class="modal-footer">
@@ -182,6 +196,7 @@ function closeJoinRoomModal() {
 
 function submitJoinRoomCode(roomId, roomName) {
     const code = document.getElementById('joinRoomCode').value.trim();
+    const rememberMe = document.getElementById('rememberRoomCode')?.checked || false;
     const errorEl = document.getElementById('joinRoomError');
     
     if (!code) {
@@ -198,6 +213,13 @@ function submitJoinRoomCode(roomId, roomName) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
+            if (rememberMe) {
+                const verifiedRooms = JSON.parse(localStorage.getItem('verifiedRooms') || '[]');
+                if (!verifiedRooms.includes(parseInt(roomId))) {
+                    verifiedRooms.push(parseInt(roomId));
+                    localStorage.setItem('verifiedRooms', JSON.stringify(verifiedRooms));
+                }
+            }
             closeJoinRoomModal();
             openGroupChat(parseInt(roomId), roomName);
         } else {

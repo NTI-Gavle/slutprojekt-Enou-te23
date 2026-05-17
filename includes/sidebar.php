@@ -2,20 +2,24 @@
 require_once __DIR__ . '/../database/db.php';
 require_once __DIR__ . '/../includes/session.php';
 
+// Load friends list if not already provided (caches result during page load)
 if (!isset($friends)) {
     $friends = [];
-    
+
     if (isset($_SESSION['user_id'])) {
         try {
             $dbconn = getDBConnection();
             if ($dbconn) {
+                // Query friends where friendship is accepted
+                // Uses CASE to handle both directions of friendship (user_id->friend_id or friend_id->user_id)
+                // Online status determined by last_activity within last 5 minutes
                 $stmt = $dbconn->prepare("
                     SELECT DISTINCT u.id, u.display_name, u.profile_image,
                            CASE WHEN u.last_activity >= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 1 ELSE 0 END as is_online
                     FROM friends f
-                    JOIN users u ON u.id = 
+                    JOIN users u ON u.id =
                         CASE WHEN f.user_id = ? THEN f.friend_id ELSE f.user_id END
-                    WHERE (f.user_id = ? OR f.friend_id = ?) 
+                    WHERE (f.user_id = ? OR f.friend_id = ?)
                     AND f.status = 'accepted'
                 ");
                 $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id']]);
@@ -37,17 +41,20 @@ if (!isset($friends)) {
     }
 }
 
+// Load pending friend requests received by current user
 if (!isset($pendingRequests)) {
     $pendingRequests = [];
-    
+
     if (isset($_SESSION['user_id'])) {
         try {
             $dbconn = getDBConnection();
             if ($dbconn) {
+                // Get incoming friend requests where current user is the friend_id (recipient)
+                // Status must be 'pending' (not yet accepted or declined)
                 $stmt = $dbconn->prepare("
-                    SELECT f.id, u.id as user_id, u.display_name, u.profile_image 
-                    FROM friends f 
-                    JOIN users u ON u.id = f.user_id 
+                    SELECT f.id, u.id as user_id, u.display_name, u.profile_image
+                    FROM friends f
+                    JOIN users u ON u.id = f.user_id
                     WHERE f.friend_id = ? AND f.status = 'pending'
                 ");
                 $stmt->execute([$_SESSION['user_id']]);
@@ -64,16 +71,19 @@ if (!isset($pendingRequests)) {
     }
 }
 
+// Load sent friend requests (requests current user has sent to others)
 if (!isset($sentRequests)) {
     $sentRequests = [];
-    
+
     if (isset($_SESSION['user_id'])) {
         try {
             $dbconn = getDBConnection();
             if ($dbconn) {
+                // Get outgoing friend requests where current user is the user_id (sender)
+                // Status must be 'pending' (waiting for recipient response)
                 $stmt = $dbconn->prepare("
-                    SELECT f.id, u.id as user_id, u.display_name, u.profile_image 
-                    FROM friends f 
+                    SELECT f.id, u.id as user_id, u.display_name, u.profile_image
+                    FROM friends f
                     JOIN users u ON u.id = f.friend_id
                     WHERE f.user_id = ? AND f.status = 'pending'
                 ");

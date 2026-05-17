@@ -9,6 +9,9 @@
                 </div>
             </div>
             <div class="groupchat-header-actions">
+                <button class="groupchat-action-btn" id="roomVisibilityBtn" title="Change Visibility" onclick="showRoomVisibilitySettings()" style="display: none;">
+                    <i class="bi bi-lock-unlock"></i>
+                </button>
                 <button class="groupchat-action-btn" id="roomCodeBtn" title="Change Code" onclick="showRoomCodeSettings()" style="display: none;">
                     <i class="bi bi-key"></i>
                 </button>
@@ -32,6 +35,7 @@
             <div class="groupchat-member-list" id="memberList">
                 <h6>Members</h6>
                 <div id="memberListContent"></div>
+                <div id="bannedListContent" style="display: none;"></div>
             </div>
         </div>
         
@@ -40,7 +44,7 @@
             <button class="input-btn" title="Attach Files" onclick="document.getElementById('groupFileInput').click()">
                 <i class="bi bi-paperclip"></i>
             </button>
-            <button class="input-btn" title="Emoji" onclick="toggleEmojiPicker()">
+            <button class="input-btn" title="Emoji" onclick="toggleGroupEmojiPicker()">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
                     <path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -56,362 +60,39 @@
             </button>
         </div>
         <div id="groupFilePreview" class="file-preview-container" style="display: none;"></div>
+        
+        <div id="groupEmojiPicker" class="emoji-picker" style="display: none;">
+            <div class="emoji-picker-header">
+                <input type="text" id="groupEmojiSearch" class="emoji-search" placeholder="Search emojis..." oninput="filterGroupEmojis(this.value)">
+                <button class="emoji-close" onclick="toggleGroupEmojiPicker()">&times;</button>
+            </div>
+            <div class="emoji-categories">
+                <button class="emoji-cat-btn active" data-cat="smileys" onclick="showGroupEmojiCategory('smileys')">😀</button>
+                <button class="emoji-cat-btn" data-cat="animals" onclick="showGroupEmojiCategory('animals')">🐶</button>
+                <button class="emoji-cat-btn" data-cat="food" onclick="showGroupEmojiCategory('food')">🍔</button>
+                <button class="emoji-cat-btn" data-cat="activities" onclick="showGroupEmojiCategory('activities')">⚽</button>
+                <button class="emoji-cat-btn" data-cat="travel" onclick="showGroupEmojiCategory('travel')">🚗</button>
+                <button class="emoji-cat-btn" data-cat="objects" onclick="showGroupEmojiCategory('objects')">💡</button>
+                <button class="emoji-cat-btn" data-cat="symbols" onclick="showGroupEmojiCategory('symbols')">❤️</button>
+            </div>
+            <div class="emoji-grid" id="groupEmojiGrid"></div>
+        </div>
     </div>
 </div>
 
-<style>
-.groupchat-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0,0,0,0.5);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 1060;
-    padding: 20px;
-}
-
-.groupchat-overlay.open {
-    display: flex;
-}
-
-.groupchat-modal {
-    background: white;
-    border-radius: 16px;
-    width: 100%;
-    max-width: 800px;
-    height: 80vh;
-    max-height: 600px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    overflow: hidden;
-}
-
-.groupchat-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    background: #f8f8f8;
-    border-bottom: 1px solid #ddd;
-}
-
-.groupchat-header-info {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.groupchat-header-info i {
-    font-size: 1.5rem;
-    color: #6c5ce7;
-}
-
-.groupchat-room-name {
-    display: block;
-    font-weight: 600;
-    font-size: 1rem;
-}
-
-.groupchat-member-count {
-    font-size: 0.75rem;
-    color: #666;
-}
-
-.groupchat-header-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.groupchat-action-btn {
-    background: none;
-    border: none;
-    padding: 8px;
-    cursor: pointer;
-    color: #666;
-    border-radius: 8px;
-    transition: background 0.2s;
-}
-
-.groupchat-action-btn:hover {
-    background: #e8e8e8;
-}
-
-.groupchat-body {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
-    position: relative;
-}
-
-.groupchat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.groupchat-member-list {
-    width: 250px;
-    border-left: 1px solid #ddd;
-    padding: 16px;
-    overflow-y: auto;
-    display: none;
-    background: #f8f8f8;
-}
-
-.groupchat-member-list.open {
-    display: block;
-}
-
-.groupchat-member-list h6 {
-    margin-bottom: 12px;
-    color: #666;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-}
-
-.member-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px;
-    border-radius: 8px;
-    margin-bottom: 8px;
-}
-
-.member-item:hover {
-    background: #e8e8e8;
-}
-
-.member-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.member-info {
-    flex: 1;
-}
-
-.member-name {
-    display: block;
-    font-size: 0.85rem;
-    font-weight: 500;
-}
-
-.member-role {
-    font-size: 0.7rem;
-    color: #666;
-}
-
-.member-actions {
-    display: none;
-}
-
-.member-item:hover .member-actions {
-    display: block;
-}
-
-.btn-small {
-    padding: 4px 8px;
-    font-size: 0.7rem;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    background: #f8f8f8;
-    color: #666;
-}
-
-.btn-small:hover {
-    background: #e8e8e8;
-}
-
-.btn-small.btn-danger {
-    color: #e74c3c;
-}
-
-.chat-loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: #666;
-}
-
-.groupchat-input {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px 20px;
-    background: #f8f8f8;
-    border-top: 1px solid #ddd;
-}
-
-.file-preview-container {
-    padding: 10px 20px;
-    background: #f0f0f0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    border-top: 1px solid #ddd;
-}
-
-.file-preview-item {
-    position: relative;
-    width: 80px;
-    height: 80px;
-    border-radius: 8px;
-    overflow: hidden;
-    background: white;
-    border: 1px solid #ddd;
-}
-
-.file-preview-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.file-preview-item .remove-file {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    background: rgba(0,0,0,0.6);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
-    font-size: 12px;
-    line-height: 1;
-}
-
-.message-attachments {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 8px;
-}
-
-.message-attachment {
-    max-width: 200px;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.message-attachment img {
-    max-width: 100%;
-    border-radius: 8px;
-}
-
-.message-attachment a {
-    display: block;
-    padding: 8px 12px;
-    background: #f0f0f0;
-    border-radius: 8px;
-    text-decoration: none;
-    color: #333;
-}
-
-.group-message {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    max-width: 70%;
-}
-
-.group-message.own {
-    align-self: flex-end;
-    flex-direction: row-reverse;
-}
-
-.group-message-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    object-fit: cover;
-    flex-shrink: 0;
-}
-
-.group-message-content {
-    flex: 1;
-}
-
-.group-message-sender {
-    display: block;
-    font-size: 0.7rem;
-    color: #666;
-    margin-bottom: 2px;
-}
-
-.group-message-bubble {
-    padding: 10px 14px;
-    border-radius: 16px;
-    word-wrap: break-word;
-    font-size: 0.9rem;
-    line-height: 1.4;
-}
-
-.group-message:not(.own) .group-message-bubble {
-    background: #e8e8e8;
-    color: black;
-}
-
-.group-message.own .group-message-bubble {
-    background: #080110;
-    color: white;
-}
-
-.delete-msg-btn {
-    background: none;
-    border: none;
-    color: #999;
-    cursor: pointer;
-    padding: 4px;
-    font-size: 0.8rem;
-    align-self: center;
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.group-message:hover .delete-msg-btn {
-    opacity: 1;
-}
-
-@media (max-width: 768px) {
-    .groupchat-modal {
-        height: 100vh;
-        max-height: 100vh;
-        border-radius: 0;
-    }
-    
-    .groupchat-member-list {
-        position: absolute;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        background: white;
-        z-index: 10;
-        box-shadow: -2px 0 8px rgba(0,0,0,0.1);
-    }
-}
-</style>
-
 <script>
-let currentRoomId = null;
-let lastMessageId = 0;
-let pollInterval = null;
-let isPolling = false;
+// Global state variables for group chat functionality
+let currentRoomId = null;       // ID of currently open chat room
+let lastMessageId = 0;           // ID of last received message for polling
+let pollInterval = null;        // Timer ID for message polling
+let isPolling = false;          // Flag to prevent concurrent polling requests
 
+/**
+ * Opens the group chat modal for a specific room.
+ * Initializes polling to fetch new messages every 3 seconds.
+ * @param {number} roomId - The unique ID of the room to open
+ * @param {string} roomName - Display name of the room
+ */
 function openGroupChat(roomId, roomName) {
     currentRoomId = roomId;
     document.getElementById('groupChatRoomName').textContent = roomName;
@@ -419,7 +100,11 @@ function openGroupChat(roomId, roomName) {
     document.body.style.overflow = 'hidden';
     
     lastMessageId = 0;
-    loadMessages().then(loadMembers);
+    loadMessages().then(() => {
+        loadMembers();
+        // Auto-show member list
+        document.getElementById('memberList').classList.add('open');
+    });
     startPolling();
 }
 
@@ -479,11 +164,16 @@ function loadMessages() {
         });
 }
 
+/**
+ * Sends a text message to the current group chat room.
+ * Gets input value, sends to server via POST, then reloads messages.
+ * Also handles file attachments if any are pending.
+ */
 function sendGroupMessage() {
     const input = document.getElementById('groupMessageInput');
     const text = input.value.trim();
     if (!text || !currentRoomId) return;
-    
+
     fetch('api/send_message.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -583,42 +273,86 @@ function checkNewMessages() {
         });
 }
 
+/**
+ * Loads and displays all members of the current room.
+ * Shows member list with roles (owner/moderator/member) and actions.
+ * Only room admins/moderators see action buttons (kick, ban, promote).
+ */
 function loadMembers() {
     if (!currentRoomId) return;
-    
+
     fetch(`api/get_room_members.php?room_id=${currentRoomId}`)
         .then(res => res.json())
         .then(data => {
+            console.log('Members API response:', data);
             if (data.success && data.members) {
                 const container = document.getElementById('memberListContent');
                 document.getElementById('groupChatMemberCount').textContent = data.members.length + ' members';
                 
                 // Show code button for admins
                 const codeBtn = document.getElementById('roomCodeBtn');
-                if (codeBtn) {
-                    codeBtn.style.display = data.is_admin ? 'inline-flex' : 'none';
+                if (codeBtn) codeBtn.style.display = data.is_admin ? 'inline-flex' : 'none';
+                
+                // Show visibility button for admins
+                const visBtn = document.getElementById('roomVisibilityBtn');
+                if (visBtn) visBtn.style.display = data.is_admin ? 'inline-flex' : 'none';
+                
+                if (data.members.length === 0) {
+                    container.innerHTML = '<p class="text-muted small">No members found</p>';
+                    return;
                 }
                 
+                // Separate active members and banned members
+                const activeMembers = data.members.filter(m => !m.is_banned);
+                const bannedMembers = data.members.filter(m => m.is_banned);
+                
+                // Show active members
                 let html = '';
-                data.members.forEach(member => {
-                    html += `
-                    <div class="member-item">
-                        <img src="${member.profile_image || 'img/default-avatar.svg'}" alt="" class="member-avatar">
-                        <div class="member-info">
-                            <span class="member-name">${escapeHtml(member.display_name)}</span>
-                            <span class="member-role">${member.role === 'admin' ? '<i class="bi bi-shield-fill"></i> Admin' : member.role === 'moderator' ? '<i class="bi bi-star-fill"></i> Moderator' : 'Member'}</span>
-                        </div>
-                        ${member.can_kick ? '<div class="member-actions">' + 
-                            (member.role === 'member' ? '<button class="btn-small btn-warning" onclick="promoteMember(' + member.id + ', \'promote\')">Promote</button>' : 
-                            member.role === 'moderator' ? '<button class="btn-small btn-secondary" onclick="promoteMember(' + member.id + ', \'demote\')">Demote</button>' : '') +
-                            ' <button class="btn-small btn-danger" onclick="kickMember(' + member.id + ')">Kick</button></div>' : ''}
-                    </div>
-                    `;
+                activeMembers.forEach(member => {
+                    const canManage = data.is_admin && member.role !== 'admin';
+                    const actions = canManage 
+                        ? '<div class="member-actions">' + 
+                          (member.role === 'member' ? '<button class="btn-small btn-warning" onclick="promoteMember(' + member.id + ', \'promote\')">Promote</button> ' : '') +
+                          '<button class="btn-small btn-danger" onclick="kickMember(' + member.id + ')">Kick</button> ' +
+                          '<button class="btn-small btn-dark" onclick="banMember(' + member.id + ', \'ban\')">Ban</button></div>' 
+                        : '';
+                    
+                    html += '<div class="member-item">' +
+                        '<img src="' + (member.profile_image || 'img/default-avatar.svg') + '" class="member-avatar">' +
+                        '<div class="member-info">' +
+                        '<span class="member-name">' + escapeHtml(member.display_name) + '</span>' +
+                        '<span class="member-role">' + (member.role === 'admin' ? '<i class="bi bi-shield-fill"></i> Owner' : member.role === 'moderator' ? '<i class="bi bi-star-fill"></i> Moderator' : 'Member') + '</span>' +
+                        '</div>' + actions + '</div>';
                 });
                 container.innerHTML = html;
+                
+                // Show banned members section (only for admins)
+                if (data.is_admin && bannedMembers.length > 0) {
+                    const bannedContainer = document.getElementById('bannedListContent');
+                    if (bannedContainer) {
+                        bannedContainer.style.display = 'block';
+                        let bannedHtml = '<h6 class="mt-3">Banned Users</h6>';
+                        bannedMembers.forEach(member => {
+                            bannedHtml += '<div class="member-item">' +
+                                '<img src="' + (member.profile_image || 'img/default-avatar.svg') + '" class="member-avatar">' +
+                                '<div class="member-info">' +
+                                '<span class="member-name">' + escapeHtml(member.display_name) + '</span>' +
+                                '<span class="member-role text-danger">Banned</span>' +
+                                '</div>' +
+                                '<div class="member-actions"><button class="btn-small btn-success" onclick="banMember(' + member.id + ', \'unban\')">Unban</button></div>' +
+                                '</div>';
+                        });
+                        bannedContainer.innerHTML = bannedHtml;
+                    }
+                }
+            } else {
+                document.getElementById('memberListContent').innerHTML = '<p class="text-danger small">Error loading members</p>';
             }
         })
-        .catch(err => console.error('Error loading members:', err));
+        .catch(err => {
+            console.error('Error loading members:', err);
+            document.getElementById('memberListContent').innerHTML = '<p class="text-danger small">Error loading members</p>';
+        });
 }
 
 function kickMember(userId) {
@@ -638,6 +372,29 @@ function kickMember(userId) {
         })
         .catch(err => showAlert('Error', 'Error kicking member', 'error'));
     }, null, 'btn btn-danger');
+}
+
+function banMember(userId, action) {
+    const title = action === 'ban' ? 'Ban User' : 'Unban User';
+    const message = action === 'ban' ? 'This will prevent the user from joining this room. Are you sure?' : 'This will allow the user to rejoin this room. Are you sure?';
+    showConfirm(title, message, function() {
+        fetch('api/ban_member.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `room_id=${currentRoomId}&user_id=${userId}&action=${action}`
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // Small delay to ensure DB is updated
+                setTimeout(loadMembers, 100);
+                showAlert('Success', data.message, 'success');
+            } else {
+                showAlert('Error', data.message || 'Failed to update ban status', 'error');
+            }
+        })
+        .catch(err => showAlert('Error', 'Error updating ban status', 'error'));
+    });
 }
 
 function promoteMember(userId, action) {
@@ -662,25 +419,90 @@ function promoteMember(userId, action) {
 
 function showRoomCodeSettings() {
     const currentCode = document.getElementById('groupChatRoomName').dataset.code || '';
-    const newCode = prompt('Enter new chat code (min 4 characters):', currentCode);
-    if (newCode && newCode.length >= 4) {
-        fetch('api/update_room_code.php', {
+    const modalHtml = `
+        <div class="modal fade show" id="roomCodeModal" style="display: block;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header" style="background: linear-gradient(-60deg, #B148FF 0%, #F4369E 100%); color: white;">
+                        <h5 class="modal-title">Change Chat Code</h5>
+                        <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('roomCodeModal').remove(); document.querySelector('.modal-backdrop')?.remove();"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Enter a new chat code (min 4 characters):</p>
+                        <input type="text" id="newRoomCode" class="form-control" value="${currentCode}" maxlength="8" placeholder="Enter code">
+                        <p id="roomCodeError" class="text-danger mt-2" style="display: none;"></p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('roomCodeModal').remove(); document.querySelector('.modal-backdrop')?.remove();">Cancel</button>
+                        <button type="button" class="btn btn-primary" style="background: linear-gradient(-60deg, #B148FF 0%, #F4369E 100%); border: none;" onclick="submitNewRoomCode()">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show" style="display: block;"></div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    document.getElementById('newRoomCode').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') submitNewRoomCode();
+    });
+}
+
+function submitNewRoomCode() {
+    const newCode = document.getElementById('newRoomCode').value.trim();
+    const errorEl = document.getElementById('roomCodeError');
+    
+    if (!newCode) {
+        errorEl.textContent = 'Please enter a code';
+        errorEl.style.display = 'block';
+        return;
+    }
+    if (newCode.length < 4) {
+        errorEl.textContent = 'Chat code must be at least 4 characters';
+        errorEl.style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('roomCodeModal').remove();
+    document.querySelector('.modal-backdrop')?.remove();
+    
+    fetch('api/update_room_code.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `room_id=${currentRoomId}&chat_code=${encodeURIComponent(newCode)}`
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Success', 'Chat code updated!', 'success');
+        } else {
+            showAlert('Error', data.message || 'Failed to update chat code', 'error');
+        }
+    })
+    .catch(err => showAlert('Error', 'Error updating chat code', 'error'));
+}
+
+function showRoomVisibilitySettings() {
+    showConfirm('Change Room Visibility', 'Make this room Public or Private?', function() {
+        // Show another prompt for choice
+        const choice = confirm('Click OK to make room PUBLIC, Cancel to make it PRIVATE');
+        const isPrivate = choice ? 0 : 1;
+        
+        fetch('api/toggle_room_visibility.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: `room_id=${currentRoomId}&chat_code=${encodeURIComponent(newCode)}`
+            body: `room_id=${currentRoomId}&is_private=${isPrivate}`
         })
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                showAlert('Success', 'Chat code updated!', 'success');
+                showAlert('Success', data.message, 'success');
             } else {
-                showAlert('Error', data.message || 'Failed to update chat code', 'error');
+                showAlert('Error', data.message || 'Failed to update visibility', 'error');
             }
         })
-        .catch(err => showAlert('Error', 'Error updating chat code', 'error'));
-    } else if (newCode && newCode.length < 4) {
-        showAlert('Error', 'Chat code must be at least 4 characters', 'error');
-    }
+        .catch(err => showAlert('Error', 'Error updating visibility', 'error'));
+    }, 'Make Public', 'Make Private');
 }
 
 function scrollToBottom() {
@@ -819,4 +641,57 @@ function sendMessageWithAttachments(roomId, receiverId, message, attachments) {
 document.getElementById('groupChatOverlay').addEventListener('click', function(e) {
     if (e.target === this) closeGroupChat();
 });
+
+// Emoji picker
+const emojiData = {
+    smileys: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','☺️','😚','😙','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'],
+    animals: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐒','🐔','🐧','🐦','🐤','🐣','🐥','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐕‍🦺','🐈','🐓','🦃','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿️','🦔'],
+    food: ['🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🫑','🌽','🥕','🧄','🧅','🥔','🍠','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🦴','🌭','🍔','🍟','🍕','🫓','🥪','🥙','🧆','🌮','🌯','🫔','🥗','🥘','🫕','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥠','🥮','🍢','🍡','🍧','🍨','🍦','🥧','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🥛','🍼','☕','🫖','🍵','🧃','🥤','🧋','🍶','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧉','🍾','🧊'],
+    activities: ['⚽','🏀','🏈','⚾','🥎','🎾','🏐','🏉','🥏','🎱','🪀','🏓','🏸','🏒','🏑','🥍','🏏','🪃','🥅','⛳','🪁','🏹','🎣','🤿','🥊','🥋','🎽','🛹','🛼','🛷','⛸️','🥌','🎿','⛷️','🏂','🪂','🏋️','🤼','🤸','🤺','⛹️','🤾','🏌️','🏇','🧘','🏄','🏊','🤽','🚣','🧗','🚴','🚵','🎖️','🏆','🥇','🥈','🥉','🎪','🤹','🎭','🎨','🎬','🎤','🎧','🎼','🎹','🥁','🪘','🎷','🎺','🪗','🎸','🪕','🎻','🎲','♟️','🎯','🎳','🎮','🎰'],
+    travel: ['🚗','🚕','🚙','🚌','🚎','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍️','🛵','🚲','🛴','🛺','🚨','🚔','🚍','🚘','🚖','🚡','🚠','🚟','🚃','🚋','🚞','🚝','🚄','🚅','🚈','🚂','🚆','🚇','🚊','🚉','✈️','🛫','🛬','🛩️','💺','🛰️','🚀','🛸','🚁','🛶','⛵','🚤','🛥️','🛳️','⛴️','🚢','⚓','🪝','⛽','🚧','🚦','🚥','🗺️','🗿','🗽','🗼','🏰','🏯','🏟️','🎡','🎢','🎠','⛲','⛱️','🏖️','🏝️','🏜️','🌋','⛰️','🏔️','🗻','🏕️','⛺','🛖','🏠','🏡','🏘️','🏚️','🏗️','🏭','🏢','🏬','🏣','🏤','🏥','🏦','🏨','🏪','🏫','🏩','💒','🏛️','⛪','🕌','🕍','🛕','🕋','⛩️'],
+    objects: ['⌚','📱','📲','💻','⌨️','🖥️','🖨️','🖱️','🖲️','🕹️','🗜️','💽','💾','💿','📀','📼','📷','📸','📹','🎥','📽️','🎞️','📞','☎️','📟','📠','📺','📻','🎙️','🎚️','🎛️','🧭','⏱️','⏲️','⏰','🕰️','⌛','⏳','📡','🔋','🔌','💡','🔦','🕯️','🪔','🧯','🛢️','💸','💵','💴','💶','💷','💰','💳','💎','⚖️','🧰','🔧','🔨','⚒️','🛠️','⛏️','🪚','🔩','⚙️','🪤','🧱','⛓️','🧲','🔫','💣','🧨','🪓','🔪','🗡️','⚔️','🛡️','🚬','⚰️','🪦','⚱️','🏺','🔮','📿','🧿','💈','⚗️','🔭','🔬','🕳️','🩹','🩺','💊','💉','🩸','🧬','🦠','🧫','🧪','🌡️','🧹','🪠','🧺','🧻','🚽','🚰','🚿','🛁','🛀','🧼','🪥','🪒','🧽','🪣','🧴','🛎️','🔑','🗝️','🚪','🪑','🛋️','🛏️','🛌','🧸','🪆','🖼️','🪞','🪟','🛍️','🛒','🎁','🎈','🎏','🎀','🪄','🪅','🎊','🎉','🎎','🏮','灯笼','🧧','✉️','📩','📨','📧','💌','📥','📤','📦','🏷️','📪','📫','📬','📭','📮','📯','📜','📃','📄','📑','📊','📈','📉','📆','📅','🗓️','📇','🗃️','🗳️','🗄️','📋','📁','📂','🗂️','🗞️','📰','📓','📔','📒','📕','📗','📘','📙','📚','📖','🔖','🧷','🔗','📎','🖇️','📐','📏','🧮','📌','📍','✂️','🖊️','🖋️','✒️','🖌️','🖍️','📝','✏️','🔍','🔎','🔏','🔐','🔒','🔓'],
+    symbols: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉️','☸️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🚭','❗','❕','❓','❔','‼️','⁉️','🔅','🔆','〽️','⚠️','🚸','🔱','⚜️','🔰','♻️','✅','🈯','💹','❇️','✳️','❎','🌐','💠','Ⓜ️','🌀','💤','🏧','🚾','♿','🅿️','🛗','🈳','🈂️','🛂','🛃','🛄','🛅','🚹','🚺','🚼','⚧️','🚻','🚮','🎦','📶','🈁','🔣','ℹ️','🔤','🔡','🔠','🆖','🆗','🆙','🆒','🆕','🆓','0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','🔢','#️⃣','*️⃣','⏏️','▶️','⏸️','⏯️','⏹️','⏺️','⏭️','⏮️','⏩','⏪','⏫','⏬','◀️','🔼','🔽','➡️','⬅️','⬆️','⬇️','↗️','↘️','↙️','↖️','↕️','↔️','↪️','↩️','⤴️','⤵️','🔀','🔁','🔂','🔄','🔃','🎵','🎶','➕','➖','➗','✖️','♾️','💲','💱','™️','©️','®️','👁️‍🗨️','🔚','🔙','🔛','🔝','🔜','〰️','➰','✔️','☑️','🔘','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🟤','🔺','🔻','🔸','🔹','🔶','🔷','🔳','🔲','▪️','▫️','◾','◽','◼️','◻️','🟥','🟧','🟨','🟩','🟦','🟪','⬛','⬜','🟫','🔈','🔇','🔉','🔊','🔔','🔕','📣','📢','💬','💭','♠️','♣️','♥️','♦️','🃏','🎴','🀄','🕐','🕑','🕒','🕓','🕔','🕕','🕖','🕗','🕘','🕙','🕚','🕛','🕜','🕝','🕞','🕟','🕠','🕡','🕢','🕣','🕤','🕥','🕦','🕧']
+};
+
+let currentGroupEmojiCategory = 'smileys';
+
+function toggleGroupEmojiPicker() {
+    const picker = document.getElementById('groupEmojiPicker');
+    if (picker.style.display === 'none') {
+        picker.style.display = 'block';
+        showGroupEmojiCategory(currentGroupEmojiCategory);
+    } else {
+        picker.style.display = 'none';
+    }
+}
+
+function showGroupEmojiCategory(cat) {
+    currentGroupEmojiCategory = cat;
+    document.querySelectorAll('.emoji-cat-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`[data-cat="${cat}"]`).classList.add('active');
+    const grid = document.getElementById('groupEmojiGrid');
+    grid.innerHTML = emojiData[cat].map(emoji => 
+        `<button class="emoji-btn" onclick="insertGroupEmoji('${emoji}')">${emoji}</button>`
+    ).join('');
+}
+
+function filterGroupEmojis(search) {
+    const allEmojis = Object.values(emojiData).flat();
+    const filtered = allEmojis.filter(() => true); // Show all - could add keyword matching
+    const grid = document.getElementById('groupEmojiGrid');
+    if (search === '') {
+        showGroupEmojiCategory(currentGroupEmojiCategory);
+    } else {
+        grid.innerHTML = allEmojis.slice(0, 64).map(emoji => 
+            `<button class="emoji-btn" onclick="insertGroupEmoji('${emoji}')">${emoji}</button>`
+        ).join('');
+    }
+}
+
+function insertGroupEmoji(emoji) {
+    const input = document.getElementById('groupMessageInput');
+    input.value += emoji;
+    input.focus();
+    toggleGroupEmojiPicker();
+}
 </script>

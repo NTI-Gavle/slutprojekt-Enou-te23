@@ -13,7 +13,7 @@ $maxFiles = 4;
 $maxSize = 5 * 1024 * 1024; // 5MB
 $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain', 'application/doc', 'application/docx'];
 
-$uploadDir = __DIR__ . '/../../uploads/';
+$uploadDir = dirname(__DIR__) . '/uploads/';
 if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0755, true);
 }
@@ -78,7 +78,7 @@ foreach ($fileList as $file) {
     if (move_uploaded_file($file['tmp_name'], $destination)) {
         $uploadedFiles[] = [
             'name' => $file['name'],
-            'path' => '../uploads/' . $newFilename,
+            'path' => 'uploads/' . $newFilename,
             'type' => $file['type'] ?: 'application/octet-stream',
             'size' => $file['size']
         ];

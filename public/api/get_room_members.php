@@ -17,17 +17,36 @@ if (!$roomId) {
 try {
     $db = getDBConnection();
     
-    // Check current user's role
+    // Check if user is a member of this room
     $stmt = $db->prepare("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?");
     $stmt->execute([$roomId, $_SESSION['user_id']]);
     $currentMember = $stmt->fetch();
-    $currentRole = $currentMember['role'] ?? null;
-    $isAdmin = $currentRole === 'admin';
-    $isModerator = $currentRole === 'moderator';
+    
+    if (!$currentMember) {
+        // Auto-join public rooms
+        $stmt = $db->prepare("SELECT is_private FROM rooms WHERE id = ?");
+        $stmt->execute([$roomId]);
+        $room = $stmt->fetch();
+        
+        if ($room && !$room['is_private']) {
+            $stmt = $db->prepare("INSERT IGNORE INTO room_members (room_id, user_id, role) VALUES (?, ?, 'member')");
+            $stmt->execute([$roomId, $_SESSION['user_id']]);
+            $currentRole = 'member';
+        } else {
+            echo json_encode(['success' => false, 'message' => 'You are not a member of this room']);
+            exit();
+        }
+        $isAdmin = false;
+        $isModerator = false;
+    } else {
+        $currentRole = $currentMember['role'] ?? null;
+        $isAdmin = $currentRole === 'admin';
+        $isModerator = $currentRole === 'moderator';
+    }
     
     // Get all members
     $stmt = $db->prepare("
-        SELECT u.id, u.display_name, u.profile_image, rm.role
+        SELECT u.id, u.display_name, u.profile_image, rm.role, rm.is_banned
         FROM room_members rm
         JOIN users u ON u.id = rm.user_id
         WHERE rm.room_id = ?
@@ -39,6 +58,7 @@ try {
     // Add flags for each member
     foreach ($members as &$member) {
         $member['profile_image'] = getValidProfileImage($member['profile_image'] ?? null);
+        $member['is_banned'] = (bool)($member['is_banned'] ?? false);
         
         // Can this member be kicked by current user?
         $member['can_kick'] = false;
@@ -58,5 +78,6 @@ try {
     echo json_encode(['success' => true, 'members' => $members, 'is_admin' => $isAdmin, 'is_moderator' => $isModerator, 'user_role' => $currentRole]);
     
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'Database error']);
+    error_log("get_room_members.php error: " . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
 }

@@ -24,7 +24,7 @@ try {
     
     // Get unread messages with sender info (latest 5)
     $stmt = $db->prepare("
-        SELECT m.id, m.content, m.created_at, 
+        SELECT m.id, m.message, m.created_at, 
                u.id as sender_id, u.username, u.display_name, u.profile_image
         FROM messages m
         JOIN users u ON m.sender_id = u.id
@@ -46,7 +46,7 @@ try {
                 'username' => $msg['username'],
                 'display_name' => $msg['display_name'],
                 'profile_image' => $msg['profile_image'],
-                'preview' => $msg['content'],
+                'preview' => $msg['message'] ?? '',
                 'count' => 0
             ];
         }

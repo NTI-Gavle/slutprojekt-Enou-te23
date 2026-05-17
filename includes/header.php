@@ -12,13 +12,19 @@
     <script src="js/app.js" defer></script>
 </head>
 <body<?= isLoggedIn() ? ' class="logged-in"' : '' ?>>
-<?php 
+<?php
+// Check if user is logged in and has an active warning from admin
 if (isLoggedIn()) {
     require_once __DIR__ . '/../database/db.php';
     $db = getDBConnection();
+
+    // Retrieve warning message from user's record if exists
     $stmt = $db->prepare("SELECT warning FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $currentUser = $stmt->fetch();
+
+    // Display modal warning popup if user has warning set
+    // Modal blocks all interaction until user acknowledges (clicks "I Understand")
     if (!empty($currentUser['warning'])) {
         ?>
         <div class="modal fade show" id="warningModal" data-bs-backdrop="static" tabindex="-1" style="display: block;">
@@ -107,25 +113,90 @@ if (isLoggedIn()) {
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
         </div>
         <div class="offcanvas-body">
-            <form class="mb-3">
-                <input type="search" class="form-control" placeholder="Search...">
-            </form>
+            <div class="mobile-search">
+                <input type="search" id="mobileSearchInput" class="form-control" placeholder="Search users, rooms, pages..." oninput="mobileSearch(this.value)">
+                <div id="mobileSearchResults" class="mobile-search-results"></div>
+            </div>
 
 <?php if (isset($_SESSION['user_id'])): ?>
-                <?php 
+                <?php
                 $img = getValidProfileImage($_SESSION['profile_image'] ?? null);
+
+                // Load database connection for friends query
+                require_once __DIR__ . '/../database/db.php';
+                $db = getDBConnection();
+
+                // Get friends list with their online status and last message timestamp
+                // DISTINCT prevents duplicate entries when both users added each other
+                // Subquery gets most recent message for sorting by conversation activity
+                $friendsStmt = $db->prepare("
+                    SELECT DISTINCT u.id, u.display_name, u.profile_image, u.last_activity,
+                    (SELECT created_at FROM messages WHERE (sender_id = u.id AND receiver_id = ?) OR (sender_id = ? AND receiver_id = u.id) ORDER BY created_at DESC LIMIT 1) as last_message
+                    FROM friends f
+                    JOIN users u ON (CASE WHEN f.user_id = ? THEN f.friend_id = u.id ELSE f.user_id = u.id END)
+                    WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted'
+                    ORDER BY last_message DESC
+                ");
+                $friendsStmt->execute([$_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id']]);
+                $mobileFriends = $friendsStmt->fetchAll();
                 ?>
                 <div class="mobile-user mb-3">
                     <img src="<?= $img ?>" alt="Profile" class="avatar">
                     <span><?= htmlspecialchars($_SESSION['display_name'] ?? 'User') ?></span>
                 </div>
-                <a href="profile.php" class="btn btn-outline w-100 mb-2">Profile</a>
+                
+                <div id="mobileUnreadSection" class="mobile-section d-block d-md-none" style="display: none;">
+                    <h6>Unread Messages (<span id="mobileUnreadCount">0</span>)</h6>
+                    <div id="mobileUnreadList" class="mobile-unread-list"></div>
+                </div>
+
                 <hr>
+                <a href="profile.php" class="btn btn-outline w-100 mb-2">Profile</a>
                 <a href="index.php" class="btn btn-outline w-100 mb-2">Home</a>
                 <a href="about.php" class="btn btn-outline w-100 mb-2">About Us</a>
                 <a href="legal.php" class="btn btn-outline w-100 mb-2">Legal</a>
                 <hr>
-                <a href="auth/process-logout.php" class="btn btn-outline w-100">Logout</a>
+                <a href="auth/process-logout.php" class="btn btn-outline w-100 mb-3">Logout</a>
+                
+                <?php /* Unread messages now loaded via JS - see app.js checkUnreadMessages() */ ?>
+                
+                <div class="mobile-section d-block d-md-none">
+                    <h6>Friends</h6>
+                    <?php if (count($mobileFriends) > 0): ?>
+                    <div class="mobile-friends-list">
+                        <?php foreach ($mobileFriends as $friend):
+                            $isOnline = $friend['last_activity'] && (time() - strtotime($friend['last_activity']) < 300);
+                            $friendImg = getValidProfileImage($friend['profile_image']);
+                        ?>
+                        <div class="mobile-friend-item" data-user-id="<?= $friend['id'] ?>">
+                            <div class="friend-avatar-wrap" onclick="openUserChatById(<?= $friend['id'] ?>)">
+                                <img src="<?= $friendImg ?>" class="avatar-small">
+                                <?php if ($isOnline): ?>
+                                    <span class="online-dot"></span>
+                                <?php endif; ?>
+                            </div>
+                            <span class="friend-name" onclick="openUserChatById(<?= $friend['id'] ?>)"><?= htmlspecialchars($friend['display_name']) ?></span>
+                            <div class="friend-btns">
+                                <div class="dropdown">
+                                    <button class="btn btn-icon btn-more btn-sm" data-bs-toggle="dropdown" onclick="event.stopPropagation()">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><a class="dropdown-item" href="profile.php?user=<?= $friend['id'] ?>"><i class="bi bi-person me-2"></i>View Profile</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); openUserChatById(<?= $friend['id'] ?>)"><i class="bi bi-chat-left-text me-2"></i>Chat</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); initiateCall(<?= $friend['id'] ?>)"><i class="bi bi-telephone me-2"></i>Call</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); unfriend(<?= $friend['id'] ?>)"><i class="bi bi-person-x me-2"></i>Unfriend</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php else: ?>
+                    <p class="text-muted small">No friends yet</p>
+                    <?php endif; ?>
+                </div>
             <?php else: ?>
                 <a href="auth/login.php" class="btn btn-outline w-100 mb-2">Login</a>
                 <a href="auth/register.php" class="btn btn-primary w-100">Register</a>

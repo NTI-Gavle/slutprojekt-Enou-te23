@@ -2,7 +2,6 @@
 // Load session and database functions
 require_once __DIR__ . '/../includes/session.php';
 require_once __DIR__ . '/../database/db.php';
-use PDO;
 
 // Ensure user is logged in
 if (!isLoggedIn()) {

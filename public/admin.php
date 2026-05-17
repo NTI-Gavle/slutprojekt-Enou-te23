@@ -28,16 +28,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $deleteId = (int)$_POST['user_id'];
         try {
             $db->beginTransaction();
-            // Delete user's messages
+
+            // Get user's profile image path before deleting
+            $stmt = $db->prepare("SELECT profile_image FROM users WHERE id = ?");
+            $stmt->execute([$deleteId]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            $profileImage = $user['profile_image'] ?? '';
+
+            // Get message attachments (files user sent)
+            $stmt = $db->prepare("SELECT attachments FROM messages WHERE sender_id = ? AND attachments IS NOT NULL");
+            $stmt->execute([$deleteId]);
+            $messagesWithFiles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            $attachmentFiles = [];
+            foreach ($messagesWithFiles as $msg) {
+                if ($msg['attachments']) {
+                    $files = json_decode($msg['attachments'], true);
+                    if (is_array($files)) {
+                        foreach ($files as $file) {
+                            if (isset($file['path'])) {
+                                $attachmentFiles[] = $file['path'];
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Get room IDs user created (to delete their rooms)
+            $stmt = $db->prepare("SELECT id, chat_code FROM rooms WHERE creator_id = ?");
+            $stmt->execute([$deleteId]);
+            $userRooms = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Delete messages sent/received by user
             $db->exec("DELETE FROM messages WHERE sender_id = $deleteId OR receiver_id = $deleteId");
+
             // Delete user's room memberships
             $db->exec("DELETE FROM room_members WHERE user_id = $deleteId");
+
             // Delete user's friend relationships
             $db->exec("DELETE FROM friends WHERE user_id = $deleteId OR friend_id = $deleteId");
+
+            // Delete rooms created by this user (and all their messages/memberships)
+            foreach ($userRooms as $room) {
+                $roomId = $room['id'];
+                $db->exec("DELETE FROM messages WHERE room_id = $roomId");
+                $db->exec("DELETE FROM room_members WHERE room_id = $roomId");
+                $db->exec("DELETE FROM rooms WHERE id = $roomId");
+            }
+
             // Delete user
             $db->exec("DELETE FROM users WHERE id = $deleteId");
             $db->commit();
-            $message = 'User deleted successfully!';
+
+            // After successful DB deletion, delete uploaded files from disk
+            $uploadPath = __DIR__ . '/uploads/';
+            $avatarPath = __DIR__ . '/img/';
+
+            // Delete profile image (if custom, not default)
+            if ($profileImage && strpos($profileImage, 'default-avatar') === false) {
+                $fullPath = $avatarPath . basename($profileImage);
+                if (file_exists($fullPath)) {
+                    @unlink($fullPath);
+                }
+            }
+
+            // Delete message attachments
+            foreach ($attachmentFiles as $filePath) {
+                $fullPath = __DIR__ . '/' . ltrim($filePath, '/');
+                if (file_exists($fullPath)) {
+                    @unlink($fullPath);
+                }
+            }
+
+            $message = 'User and all associated data deleted successfully!';
         } catch (Exception $e) {
             $db->rollBack();
             $message = 'Error deleting user: ' . $e->getMessage();
