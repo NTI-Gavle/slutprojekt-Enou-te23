@@ -37,7 +37,7 @@
 ## Teknisk Implementation
 
 ### Databas
-- Tabeller: users, rooms, room_members, messages, friends, password_resets
+- Tabeller: users, rooms, room_members, messages, friends, notifications
 - PDO med förberedda uttryck (säker mot SQL-injection)
 - UTC tidszon
 
@@ -54,21 +54,6 @@
 /public      - Sidor, auth, API-endpoints
 /uploads     - Uppladdade filer
 ```
-
----
-
-## Avklarade Uppgifter
-
-| Vecka | Moment | Status |
-|-------|--------|--------|
-| 13-14 | Grundlayout, inloggning, registrering | ✓ |
-| 15 | Gruppchatt/privatchatt modals | ✓ |
-| 16 | Databas, inloggning med PDO | ✓ |
-| 17 | Meddelandehantering, profil | ✓ |
-| 18 | AJAX uppdateringar, säkerhet | ✓ |
-| 19-20 | Adminpanel, dokumentation, final testing | ✓ |
-
----
 
 ## Dokumentation
 
