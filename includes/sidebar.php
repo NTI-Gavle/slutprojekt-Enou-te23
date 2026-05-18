@@ -1,0 +1,214 @@
+<?php
+require_once __DIR__ . '/../database/db.php';
+require_once __DIR__ . '/../includes/session.php';
+
+// Load friends list if not already provided (caches result during page load)
+if (!isset($friends)) {
+    $friends = [];
+
+    if (isset($_SESSION['user_id'])) {
+        try {
+            $dbconn = getDBConnection();
+            if ($dbconn) {
+                // Query friends where friendship is accepted
+                // Uses CASE to handle both directions of friendship (user_id->friend_id or friend_id->user_id)
+                // Online status determined by last_activity within last 5 minutes
+                $stmt = $dbconn->prepare("
+                    SELECT DISTINCT u.id, u.display_name, u.profile_image,
+                           CASE WHEN u.last_activity >= DATE_SUB(NOW(), INTERVAL 5 MINUTE) THEN 1 ELSE 0 END as is_online
+                    FROM friends f
+                    JOIN users u ON u.id =
+                        CASE WHEN f.user_id = ? THEN f.friend_id ELSE f.user_id END
+                    WHERE (f.user_id = ? OR f.friend_id = ?)
+                    AND f.status = 'accepted'
+                ");
+                $stmt->execute([$_SESSION['user_id'], $_SESSION['user_id'], $_SESSION['user_id']]);
+                $friends = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($friends as &$friend) {
+                    $friend['profile_image'] = getValidProfileImage($friend['profile_image'] ?? null);
+                    if (isset($friend['is_online']) && $friend['is_online'] == 1) {
+                        $friend['is_online'] = true;
+                    } else {
+                        $friend['is_online'] = false;
+                    }
+                }
+                unset($friend);
+            }
+        } catch (Exception $e) {
+            $friends = [];
+        }
+    }
+}
+
+// Load pending friend requests received by current user
+if (!isset($pendingRequests)) {
+    $pendingRequests = [];
+
+    if (isset($_SESSION['user_id'])) {
+        try {
+            $dbconn = getDBConnection();
+            if ($dbconn) {
+                // Get incoming friend requests where current user is the friend_id (recipient)
+                // Status must be 'pending' (not yet accepted or declined)
+                $stmt = $dbconn->prepare("
+                    SELECT f.id, u.id as user_id, u.display_name, u.profile_image
+                    FROM friends f
+                    JOIN users u ON u.id = f.user_id
+                    WHERE f.friend_id = ? AND f.status = 'pending'
+                ");
+                $stmt->execute([$_SESSION['user_id']]);
+                $pendingRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($pendingRequests as &$req) {
+                    $req['profile_image'] = getValidProfileImage($req['profile_image'] ?? null);
+                }
+                unset($req);
+            }
+        } catch (Exception $e) {
+            $pendingRequests = [];
+        }
+    }
+}
+
+// Load sent friend requests (requests current user has sent to others)
+if (!isset($sentRequests)) {
+    $sentRequests = [];
+
+    if (isset($_SESSION['user_id'])) {
+        try {
+            $dbconn = getDBConnection();
+            if ($dbconn) {
+                // Get outgoing friend requests where current user is the user_id (sender)
+                // Status must be 'pending' (waiting for recipient response)
+                $stmt = $dbconn->prepare("
+                    SELECT f.id, u.id as user_id, u.display_name, u.profile_image
+                    FROM friends f
+                    JOIN users u ON u.id = f.friend_id
+                    WHERE f.user_id = ? AND f.status = 'pending'
+                ");
+                $stmt->execute([$_SESSION['user_id']]);
+                $sentRequests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                foreach ($sentRequests as &$req) {
+                    $req['profile_image'] = getValidProfileImage($req['profile_image'] ?? null);
+                }
+                unset($req);
+            }
+        } catch (Exception $e) {
+            $sentRequests = [];
+        }
+    }
+}
+?>
+<div class="sidebar-title">
+    <h5 class="mb-0">My Friends</h5>
+    <div class="friend-chat-icon" title="Chats">
+        <i class="bi bi-chat-left-text"></i>
+        <span class="chat-badge" id="chatBadge" style="display: none;">1</span>
+    </div>
+</div>
+
+<?php if (isset($_SESSION['user_id'])): ?>
+<div class="add-friend-inline">
+    <form action="add_friend.php" method="POST" class="add-friend-form">
+        <input type="text" class="form-control form-control-sm" name="username" placeholder="Add by username..." required>
+        <button type="submit" class="btn btn-add btn-sm"><i class="bi bi-plus-lg"></i></button>
+    </form>
+</div>
+
+<div id="unreadMessagesSection" style="display: none;">
+    <div class="sidebar-title" style="padding-bottom: 5px;">
+        <h6 class="mb-0 text-danger">Unread Messages</h6>
+    </div>
+    <div id="unreadMessagesList" class="unread-messages-list"></div>
+</div>
+<?php endif; ?>
+
+<div class="friends">
+    <?php if (!isset($_SESSION['user_id'])): ?>
+        <div class="no-friends">
+            <p>Login to see friends</p>
+        </div>
+    <?php elseif (empty($friends) && empty($pendingRequests) && empty($sentRequests)): ?>
+        <div class="no-friends">
+            <i class="bi bi-people"></i>
+            <p>No friends yet</p>
+        </div>
+    <?php else: ?>
+        <?php if (!empty($pendingRequests)): ?>
+            <div class="pending-section">
+                <div class="sidebar-subtitle">Pending Requests</div>
+                <?php foreach ($pendingRequests as $request): ?>
+                    <div class="friend pending" data-user-id="<?= $request['user_id'] ?>">
+                        <div class="friend-avatar-wrap">
+                            <img src="<?= htmlspecialchars($request['profile_image'] ?? 'img/default-avatar.svg') ?>" alt="" class="friend-avatar">
+                        </div>
+                        <div class="friend-info">
+                            <span class="friend-name"><?= htmlspecialchars($request['display_name']) ?></span>
+                            <span class="friend-status text-muted">Wants to be friends</span>
+                        </div>
+                        <div class="friend-btns">
+                            <button class="btn btn-icon btn-sm text-success" onclick="respondToRequest(<?= $request['user_id'] ?>, 'accept')" title="Accept">
+                                <i class="bi bi-check-lg"></i>
+                            </button>
+                            <button class="btn btn-icon btn-sm text-danger" onclick="respondToRequest(<?= $request['user_id'] ?>, 'decline')" title="Decline">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <?php if (empty($sentRequests)): ?>
+            <hr class="sidebar-divider">
+            <?php endif; ?>
+        <?php endif; ?>
+        
+        <?php if (!empty($sentRequests)): ?>
+            <div class="pending-section">
+                <div class="sidebar-subtitle">Sent Requests</div>
+                <?php foreach ($sentRequests as $request): ?>
+                    <div class="friend pending" data-user-id="<?= $request['user_id'] ?>">
+                        <div class="friend-avatar-wrap">
+                            <img src="<?= htmlspecialchars($request['profile_image'] ?? 'img/default-avatar.svg') ?>" alt="" class="friend-avatar">
+                        </div>
+                        <div class="friend-info">
+                            <span class="friend-name"><?= htmlspecialchars($request['display_name']) ?></span>
+                            <span class="friend-status text-muted">Request sent</span>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <?php if (!empty($pendingRequests) || !empty($friends)): ?>
+            <hr class="sidebar-divider">
+            <?php endif; ?>
+        <?php endif; ?>
+        
+        <?php foreach ($friends as $friend): ?>
+            <div class="friend" data-user-id="<?= $friend['id'] ?>">
+                <div class="friend-avatar-wrap">
+                    <img src="<?= htmlspecialchars($friend['profile_image'] ?? 'img/default-avatar.svg') ?>" alt="" class="friend-avatar">
+                    <span class="status-dot <?= $friend['is_online'] ? 'online' : 'offline' ?>"></span>
+                </div>
+                <div class="friend-info">
+                    <span class="friend-name"><?= htmlspecialchars($friend['display_name']) ?></span>
+                    <span class="friend-status"><?= $friend['is_online'] ? 'Online' : 'Offline' ?></span>
+                </div>
+                <div class="friend-btns">
+                    <div class="dropdown">
+                        <button class="btn btn-icon btn-more" data-bs-toggle="dropdown" onclick="event.stopPropagation()">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profile.php?user=<?= $friend['id'] ?>"><i class="bi bi-person me-2"></i>View Profile</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); openPrivateChat(<?= $friend['id'] ?>)"><i class="bi bi-chat-left-text me-2"></i>Chat</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); initiateCall(<?= $friend['id'] ?>)"><i class="bi bi-telephone me-2"></i>Call</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); unfriend(<?= $friend['id'] ?>)"><i class="bi bi-person-x me-2"></i>Unfriend</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+</div>

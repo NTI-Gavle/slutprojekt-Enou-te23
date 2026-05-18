@@ -1,4 +1,4 @@
-# Ignore environment files
+# Ignore environment files (contains database credentials)
 .env
 .env.local
 .env.*.local
@@ -29,5 +29,9 @@ build/
 Thumbs.db
 Desktop.ini
 
-# Public uploads (if your project uses uploads folder)
+# Uploaded files (user content - avatars, attachments)
+uploads/
 public/uploads/
+
+# PHP error logs
+php_errors.log
