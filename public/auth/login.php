@@ -11,6 +11,7 @@ $error = $_SESSION['login_error'] ?? null;
 unset($_SESSION['login_error']);
 $success = $_SESSION['login_success'] ?? null;
 unset($_SESSION['login_success']);
+$deleted = isset($_GET['deleted']) && $_GET['deleted'] == '1';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -40,6 +41,10 @@ unset($_SESSION['login_success']);
             
             <?php if ($success): ?>
                 <div class="alert alert-success"><?= htmlspecialchars($success) ?></div>
+            <?php endif; ?>
+            
+            <?php if ($deleted): ?>
+                <div class="alert alert-success">Your account has been deleted.</div>
             <?php endif; ?>
             
             <form action="process-login.php" method="POST">

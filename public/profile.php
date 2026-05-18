@@ -163,6 +163,84 @@ if ($isOwnProfile && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['requ
     exit();
 }
 
+// Handle account deletion (own profile only)
+if ($isOwnProfile && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_account'])) {
+    $password = $_POST['current_password'];
+    
+    if (!empty($password)) {
+        $stmt = getDBConnection()->prepare("SELECT password FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($userData && password_verify($password, $userData['password'])) {
+            $db = getDBConnection();
+            
+            $stmt = $db->prepare("SELECT attachments FROM messages WHERE (sender_id = ? OR receiver_id = ?) AND attachments IS NOT NULL AND attachments != ''");
+            $stmt->execute([$userId, $userId]);
+            $allMessages = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            foreach ($allMessages as $attachmentsJson) {
+                $attachments = json_decode($attachmentsJson, true);
+                if (is_array($attachments)) {
+                    foreach ($attachments as $att) {
+                        if (isset($att['path'])) {
+                            $fullPath = __DIR__ . '/../' . $att['path'];
+                            if (file_exists($fullPath)) {
+                                unlink($fullPath);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            $uploadDir = __DIR__ . '/../uploads/';
+            if (is_dir($uploadDir)) {
+                $files = glob($uploadDir . '*');
+                foreach ($files as $file) {
+                    if (is_file($file)) {
+                        unlink($file);
+                    }
+                }
+            }
+            
+            $stmt = $db->prepare("SELECT profile_image FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            $profileImg = $stmt->fetch(PDO::FETCH_COLUMN);
+            if ($profileImg && strpos($profileImg, 'default-avatar') === false) {
+                $fullPath = __DIR__ . '/../' . $profileImg;
+                if (file_exists($fullPath)) {
+                    unlink($fullPath);
+                }
+            }
+            
+            $stmt = $db->prepare("DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?");
+            $stmt->execute([$userId, $userId]);
+            
+            $stmt = $db->prepare("DELETE FROM room_members WHERE user_id = ?");
+            $stmt->execute([$userId]);
+            
+            $stmt = $db->prepare("DELETE FROM rooms WHERE creator_id = ?");
+            $stmt->execute([$userId]);
+            
+            $stmt = $db->prepare("DELETE FROM friends WHERE user_id = ? OR friend_id = ?");
+            $stmt->execute([$userId, $userId]);
+            
+            $stmt = $db->prepare("DELETE FROM users WHERE id = ?");
+            $stmt->execute([$userId]);
+            
+            session_unset();
+            session_destroy();
+            
+            header('Location: auth/login.php?deleted=1');
+            exit();
+        } else {
+            setFlashMessage('error', 'Incorrect password. Account not deleted.');
+            header('Location: profile.php');
+            exit();
+        }
+    }
+}
+
 // Load header (includes HTML head, nav, etc.)
 require_once __DIR__ . '/../includes/header.php';
 ?>
@@ -291,7 +369,18 @@ require_once __DIR__ . '/../includes/header.php';
         </div>
     </div>
 </div>
-<?php endif; ?>
+
+<div class="danger-zone mt-4">
+    <div class="profile-card danger-card">
+        <h3 class="danger-title">Delete Account</h3>
+        <p class="danger-desc">Enter your password to delete (This will delete your account and all associated data messages, images, groups).</p>
+        <form method="POST" class="delete-form">
+            <input type="password" class="form-control" name="current_password" placeholder="Enter your current password" required>
+            <button type="submit" name="delete_account" class="btn btn-danger w-100">Delete Account</button>
+        </form>
+    </div>
+</div>
+<?php endif; ?> 
 
 <style>
 .public-profile-name {
@@ -513,6 +602,47 @@ require_once __DIR__ . '/../includes/header.php';
     .reset-row {
         flex-direction: column;
     }
+}
+
+/* Danger Zone - Delete Account */
+.danger-zone {
+    width: 100%;
+}
+
+.danger-card {
+    border: 2px solid #dc3545;
+}
+
+.danger-title {
+    color: #dc3545;
+    margin-bottom: 10px;
+}
+
+.danger-desc {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+.delete-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.btn-danger:hover {
+    background: #c82333;
 }
 </style>
 
